@@ -180,24 +180,31 @@ export default function SeatMap({
                             const seat = item.seat;
                             const renderSeat = resolveRenderSeat(seat);
                             const seatClassLabel = cabinClassLabels[seat.cabin as CabinClass];
+                            const isOccupied = renderSeat.visualState === "occupied";
+                            const tooltip = `${seat.id} | ${seatClassLabel} | +${formatCurrency(seat.priceDelta)}`;
 
                             return (
-                              <button
+                              <div
                                 key={seat.id}
-                                type="button"
-                                disabled={renderSeat.visualState === "occupied"}
-                                className={cn(
-                                  "h-14 rounded-xl border text-body-md transition-colors focus-ring",
-                                  seatClassName(renderSeat.visualState)
-                                )}
-                                aria-label={`Seat ${seat.id} ${seatClassLabel}`}
+                                className="h-14"
+                                title={tooltip}
                                 onMouseEnter={() => setHoveredSeat(seat)}
                                 onMouseLeave={() => setHoveredSeat(null)}
-                                onClick={() => pickSeat(seat)}
-                                title={`${seat.id} | ${seatClassLabel} | +${formatCurrency(seat.priceDelta)}`}
                               >
-                                {seat.id}
-                              </button>
+                                <button
+                                  type="button"
+                                  disabled={isOccupied}
+                                  aria-disabled={isOccupied}
+                                  className={cn(
+                                    "h-14 w-full rounded-xl border text-body-md transition-colors focus-ring",
+                                    seatClassName(renderSeat.visualState)
+                                  )}
+                                  aria-label={`Seat ${seat.id} ${seatClassLabel}`}
+                                  onClick={() => pickSeat(seat)}
+                                >
+                                  {seat.id}
+                                </button>
+                              </div>
                             );
                           })}
                         </div>
@@ -217,7 +224,9 @@ export default function SeatMap({
               <strong>{formatCurrency(hoveredSeat.priceDelta)}</strong>
             </p>
           ) : (
-            <p className="text-on-surface-variant">Hover or tap any available seat to preview details.</p>
+            <p className="text-on-surface-variant">
+              Hover or tap any seat, including occupied seats, to preview class and surcharge.
+            </p>
           )}
         </div>
       </div>

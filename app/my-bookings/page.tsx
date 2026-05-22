@@ -15,6 +15,7 @@ import {
   type AlternativeSeatRow,
   type BookingRow
 } from "@/lib/booking-data";
+import { useFlightStore } from "@/store/useFlightStore";
 import { setCachedBookings, useUserStore } from "@/store/useUserStore";
 import type { BookingWithDetails, RescheduleOption, SeatSummary } from "@/lib/types";
 
@@ -214,6 +215,7 @@ export default function MyBookingsPage() {
 
     setBookings(nextBookings);
     setCachedBookings(nextBookings);
+    useFlightStore.getState().resetBookingFlow();
     setSuccessMessage("Booking cancelled successfully.");
     setCancelLoadingId(null);
     setCancelTarget(null);

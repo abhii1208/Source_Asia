@@ -82,16 +82,17 @@ export function buildDemoSeatDefinitions(seedKey: string): SeatDefinition[] {
     config.numbers.forEach((row) => {
       config.columns.forEach((column) => {
         const seatNumber = `${row}${column}`;
+        const isAvailable = hashText(`${seedKey}-${seatNumber}`) % 10 !== 0;
         seats.push({
           id: seatNumber,
           row,
           column,
           cabin: config.cabin,
-          state: hashText(`${seedKey}-${seatNumber}`) % 10 === 0 ? "occupied" : "available",
+          state: isAvailable ? "available" : "occupied",
           priceDelta: config.surcharge,
           seat_number: seatNumber,
           class: config.cabin,
-          is_available: true,
+          is_available: isAvailable,
           extra_fee: config.surcharge
         });
       });

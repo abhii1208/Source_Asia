@@ -76,14 +76,15 @@ export default function Header() {
     let isMounted = true;
     setAuthError(null);
 
-    void supabase.auth.getUser().then(({ data }) => {
+    void Promise.all([supabase.auth.getUser(), supabase.auth.getSession()]).then(([{ data }, { data: sessionData }]) => {
       if (!isMounted) {
         return;
       }
       const nextEmail = data.user?.email ?? null;
+      const sessionToken = sessionData.session?.access_token ?? null;
       setUserEmail(nextEmail);
       if (data.user?.id && nextEmail) {
-        setSession(data.user.id, nextEmail);
+        setSession(data.user.id, nextEmail, sessionToken);
       } else {
         resetUserStore();
       }
@@ -96,7 +97,7 @@ export default function Header() {
       const nextEmail = session?.user.email ?? null;
       setUserEmail(nextEmail);
       if (session?.user.id && nextEmail) {
-        setSession(session.user.id, nextEmail);
+        setSession(session.user.id, nextEmail, session.access_token ?? null);
       } else {
         resetUserStore();
       }

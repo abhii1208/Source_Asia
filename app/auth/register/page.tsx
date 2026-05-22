@@ -79,7 +79,7 @@ export default function RegisterPage() {
     }
 
     if (data.session && data.user?.id && data.user.email) {
-      setSession(data.user.id, data.user.email);
+      setSession(data.user.id, data.user.email, data.session.access_token ?? null);
       router.replace("/search");
       setIsSubmitting(false);
       return;

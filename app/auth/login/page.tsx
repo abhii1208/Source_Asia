@@ -59,7 +59,7 @@ export default function LoginPage() {
     }
 
     if (data.user?.id && data.user.email) {
-      setSession(data.user.id, data.user.email);
+      setSession(data.user.id, data.user.email, data.session?.access_token ?? null);
     }
 
     const redirectTo =

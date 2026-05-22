@@ -20,6 +20,7 @@ import {
   type FlightNoRow,
   type RescheduleRow
 } from "@/lib/booking-data";
+import { useFlightStore } from "@/store/useFlightStore";
 import { setCachedBookings, useUserStore } from "@/store/useUserStore";
 import type { BookingWithDetails, RescheduleOption, RescheduleRecord, SeatSummary } from "@/lib/types";
 
@@ -205,6 +206,7 @@ export default function BookingDetailPage() {
 
     setBooking(nextBooking);
     syncBookingToCache(nextBooking);
+    useFlightStore.getState().resetBookingFlow();
     setSuccessMessage("Booking cancelled successfully.");
     setCancelSubmitting(false);
     setCancelOpen(false);
