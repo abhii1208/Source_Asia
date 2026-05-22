@@ -1,186 +1,64 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import ConfirmationCard from "@/components/booking/ConfirmationCard";
+import PrintTicketButton from "@/components/booking/PrintTicketButton";
+import { getBookingDetails } from "@/lib/bookings/get-booking-details";
 import { createSupabaseServerClient, getSupabaseServerClientError } from "@/lib/supabase/server";
 import { isUuid } from "@/lib/booking-data";
-import type { Booking, CabinClass, Flight, FlightStatus } from "@/lib/types";
+import { formatCurrency, formatDateTime, toTitleCase } from "@/lib/utils";
 
 type ConfirmationPageProps = {
   params: {
     bookingId: string;
   };
-};
-
-type BookingRow = {
-  id: string;
-  flight_id: string;
-  status: string;
-  booked_at: string;
-  total_price: number | string;
-  pnr_code: string;
-  flights: FlightRow | FlightRow[] | null;
-  seats: SeatRow | SeatRow[] | null;
-  passengers: PassengerRow[] | null;
-};
-
-type FlightRow = {
-  id: string;
-  flight_no: string;
-  airline?: string | null;
-  origin: string;
-  destination: string;
-  departs_at: string;
-  arrives_at: string;
-  aircraft_type: string;
-  status: string;
-  base_price: number | string;
-};
-
-type SeatRow = {
-  id: string;
-  seat_number: string;
-  class: string;
-  extra_fee: number | string | null;
-  is_available: boolean;
-};
-
-type PassengerRow = {
-  id: string;
-  full_name: string;
-  passport_no: string;
-  nationality: string;
-  dob: string;
-};
-
-function toCabinClass(value: string): CabinClass {
-  if (value === "economy" || value === "business" || value === "first") {
-    return value;
-  }
-  return "economy";
-}
-
-function toFlightStatus(value: string): FlightStatus {
-  if (
-    value === "scheduled" ||
-    value === "boarding" ||
-    value === "delayed" ||
-    value === "departed" ||
-    value === "landed" ||
-    value === "cancelled"
-  ) {
-    return value;
-  }
-  return "scheduled";
-}
-
-function toDurationMinutes(departsAt: string, arrivesAt: string): number {
-  const diff = new Date(arrivesAt).getTime() - new Date(departsAt).getTime();
-  if (!Number.isFinite(diff) || diff <= 0) {
-    return 0;
-  }
-  return Math.round(diff / 60000);
-}
-
-function classPrices(basePrice: number): Record<CabinClass, number> {
-  return {
-    economy: Math.round(basePrice),
-    business: Math.round(basePrice * 2.1),
-    first: Math.round(basePrice * 3.4)
+  searchParams?: {
+    emailSent?: string;
+    emailStatus?: string;
   };
-}
+};
 
-function normalizeFlight(row: FlightRow): Flight {
-  const basePrice = Number(row.base_price);
-  const prices = classPrices(basePrice);
+function resolveEmailNotice(searchParams: ConfirmationPageProps["searchParams"]): string {
+  const emailSent = searchParams?.emailSent === "true";
+  const emailStatus = searchParams?.emailStatus;
 
-  return {
-    id: row.id,
-    flightNo: row.flight_no,
-    airline: row.airline ?? "AeroMint",
-    origin: row.origin as Flight["origin"],
-    destination: row.destination as Flight["destination"],
-    departsAt: row.departs_at,
-    arrivesAt: row.arrives_at,
-    aircraftType: row.aircraft_type,
-    durationMinutes: toDurationMinutes(row.departs_at, row.arrives_at),
-    status: toFlightStatus(row.status),
-    basePrice,
-    classPrices: prices,
-    availableCabinClasses: ["economy", "business", "first"],
-    source: "supabase",
-    seats: []
-  };
-}
-
-function mapToConfirmation(row: BookingRow): { booking: Booking; flight: Flight } | null {
-  const flightRow = Array.isArray(row.flights) ? (row.flights[0] ?? null) : row.flights;
-  const seatRow = Array.isArray(row.seats) ? (row.seats[0] ?? null) : row.seats;
-  const passenger = row.passengers?.[0] ?? null;
-
-  if (!flightRow || !seatRow || !passenger) {
-    return null;
+  if (emailSent || emailStatus === "sent") {
+    return "We've sent your ticket to your registered email.";
   }
 
-  const flight = normalizeFlight(flightRow);
-  const booking: Booking = {
-    id: row.id,
-    pnr: row.pnr_code,
-    flightId: row.flight_id,
-    traveler: {
-      fullName: passenger.full_name,
-      passportNumber: passenger.passport_no,
-      nationality: passenger.nationality,
-      dateOfBirth: passenger.dob
-    },
-    cabinClass: toCabinClass(seatRow.class),
-    seat: seatRow.seat_number,
-    totalPrice: Number(row.total_price),
-    status: row.status === "cancelled" ? "cancelled" : row.status === "rescheduled" ? "rescheduled" : "confirmed",
-    bookedAt: row.booked_at,
-    rescheduleHistory: []
-  };
+  if (emailStatus === "not_configured") {
+    return "Ticket confirmed. Email delivery is not configured in this environment.";
+  }
 
-  return { booking, flight };
+  return "Your ticket is ready. You can print it or view it anytime from My Bookings.";
 }
 
-export default async function BookingConfirmationPage({ params }: ConfirmationPageProps) {
+function renderErrorCard(title: string, message: string) {
+  return (
+    <section className="max-w-3xl mx-auto px-gutter py-12">
+      <div className="glass-panel rounded-2xl p-6 shadow-glass">
+        <h1 className="font-headline-md text-headline-md text-on-surface">{title}</h1>
+        <p className="text-on-surface-variant mt-2">{message}</p>
+        <Link href="/my-bookings" className="mt-4 inline-flex rounded-xl bg-primary px-5 py-2 text-on-primary no-print">
+          Go to My Bookings
+        </Link>
+      </div>
+    </section>
+  );
+}
+
+export default async function BookingConfirmationPage({ params, searchParams }: ConfirmationPageProps) {
   const bookingId = params.bookingId ?? "";
   if (!isUuid(bookingId)) {
-    return (
-      <section className="max-w-3xl mx-auto px-gutter py-12">
-        <div className="glass-panel rounded-2xl p-6 shadow-glass">
-          <h1 className="font-headline-md text-headline-md text-on-surface">Invalid booking reference</h1>
-          <p className="text-on-surface-variant mt-2">Please open your booking again from My Bookings.</p>
-          <Link href="/my-bookings" className="mt-4 inline-flex rounded-xl bg-primary px-5 py-2 text-on-primary">
-            Go to My Bookings
-          </Link>
-        </div>
-      </section>
-    );
+    return renderErrorCard("Invalid booking reference", "Please open your booking again from My Bookings.");
   }
 
   const envError = getSupabaseServerClientError();
   if (envError) {
-    return (
-      <section className="max-w-3xl mx-auto px-gutter py-12">
-        <div className="glass-panel rounded-2xl p-6 shadow-glass">
-          <h1 className="font-headline-md text-headline-md text-on-surface">Supabase configuration missing</h1>
-          <p className="text-on-surface-variant mt-2">{envError}</p>
-        </div>
-      </section>
-    );
+    return renderErrorCard("Supabase configuration missing", envError);
   }
 
   const supabase = createSupabaseServerClient();
   if (!supabase) {
-    return (
-      <section className="max-w-3xl mx-auto px-gutter py-12">
-        <div className="glass-panel rounded-2xl p-6 shadow-glass">
-          <h1 className="font-headline-md text-headline-md text-on-surface">Unable to load confirmation</h1>
-          <p className="text-on-surface-variant mt-2">Supabase server client is not available.</p>
-        </div>
-      </section>
-    );
+    return renderErrorCard("Unable to load confirmation", "Supabase server client is not available.");
   }
 
   const {
@@ -191,46 +69,98 @@ export default async function BookingConfirmationPage({ params }: ConfirmationPa
     redirect(`/auth/login?redirect=/booking/confirmation/${bookingId}`);
   }
 
-  const response = await supabase
-    .from("bookings")
-    .select(
-      "id, flight_id, status, booked_at, total_price, pnr_code, flights:flight_id(id, flight_no, airline, origin, destination, departs_at, arrives_at, aircraft_type, status, base_price), seats:seat_id(id, seat_number, class, extra_fee, is_available), passengers(id, full_name, passport_no, nationality, dob)"
-    )
-    .eq("id", bookingId)
-    .single<BookingRow>();
+  const details = await getBookingDetails({
+    supabase,
+    bookingId,
+    userId: user.id
+  });
 
-  if (response.error || !response.data) {
-    return (
-      <section className="max-w-3xl mx-auto px-gutter py-12">
-        <div className="glass-panel rounded-2xl p-6 shadow-glass">
-          <h1 className="font-headline-md text-headline-md text-on-surface">Booking not found</h1>
-          <p className="text-on-surface-variant mt-2">
-            We could not locate this booking in your account. Please check My Bookings.
-          </p>
-          <Link href="/my-bookings" className="mt-4 inline-flex rounded-xl bg-primary px-5 py-2 text-on-primary">
-            Go to My Bookings
-          </Link>
-        </div>
-      </section>
+  if (!details) {
+    return renderErrorCard(
+      "Booking not found",
+      "We could not locate this booking in your account. Please check My Bookings."
     );
   }
 
-  const mapped = mapToConfirmation(response.data);
-  if (!mapped) {
-    return (
-      <section className="max-w-3xl mx-auto px-gutter py-12">
-        <div className="glass-panel rounded-2xl p-6 shadow-glass">
-          <h1 className="font-headline-md text-headline-md text-on-surface">Incomplete booking data</h1>
-          <p className="text-on-surface-variant mt-2">
-            We could not assemble full booking details. Please open the booking from My Bookings.
-          </p>
-          <Link href="/my-bookings" className="mt-4 inline-flex rounded-xl bg-primary px-5 py-2 text-on-primary">
-            Go to My Bookings
+  const notice = resolveEmailNotice(searchParams);
+  const ticketCardSelector = `#ticket-card-${details.booking.id}`;
+
+  return (
+    <section className="max-w-5xl mx-auto px-gutter py-10">
+      <div className="glass-panel rounded-2xl p-6 md:p-8 shadow-glass">
+        <h1 className="font-headline-lg text-headline-lg text-on-surface">Thank you for booking with AeroMint</h1>
+        <p className="text-on-surface-variant mt-1">Your ticket has been confirmed successfully.</p>
+        <p className="mt-4 rounded-xl border border-primary/35 bg-primary-container/20 px-4 py-3 text-sm text-primary">
+          {notice}
+        </p>
+
+        <article id={`ticket-card-${details.booking.id}`} className="ticket-print-card mt-6 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest p-5 md:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant/35 pb-4">
+            <div>
+              <p className="text-on-surface-variant text-sm">PNR Code</p>
+              <p className="font-headline-lg text-headline-lg text-primary">{details.booking.pnrCode}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-on-surface-variant text-sm">Booking Status</p>
+              <p className="font-headline-md text-headline-md">{toTitleCase(details.booking.status)}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl border border-outline-variant/35 bg-white/80 p-4">
+              <h2 className="font-headline-md text-headline-md mb-2">Flight Details</h2>
+              <p>Flight Number: {details.flight.flightNo}</p>
+              <p>Airline: {details.flight.airline}</p>
+              <p>Origin: {details.flight.origin}</p>
+              <p>Destination: {details.flight.destination}</p>
+              <p>Departure: {formatDateTime(details.flight.departsAt)}</p>
+              <p>Arrival: {formatDateTime(details.flight.arrivesAt)}</p>
+              <p>Aircraft Type: {details.flight.aircraftType}</p>
+            </div>
+
+            <div className="rounded-xl border border-outline-variant/35 bg-white/80 p-4">
+              <h2 className="font-headline-md text-headline-md mb-2">Seat & Fare</h2>
+              <p>Seat Number: {details.seat.seatNumber}</p>
+              <p>Seat Class: {toTitleCase(details.seat.seatClass)}</p>
+              <p>Total Price: {formatCurrency(details.booking.totalPrice)}</p>
+              <p>Booked Date: {formatDateTime(details.booking.bookedAt)}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-xl border border-outline-variant/35 bg-white/80 p-4">
+            <h2 className="font-headline-md text-headline-md mb-2">Passenger Details</h2>
+            {details.passengers.length === 0 ? (
+              <p className="text-on-surface-variant">Passenger details are unavailable for this ticket.</p>
+            ) : (
+              <ul className="space-y-3">
+                {details.passengers.map((passenger) => (
+                  <li key={passenger.id} className="rounded-xl border border-outline-variant/25 p-3">
+                    <p className="text-on-surface">{passenger.fullName}</p>
+                    <p className="text-on-surface-variant text-sm">Nationality: {passenger.nationality}</p>
+                    <p className="text-on-surface-variant text-sm">DOB: {passenger.dateOfBirth}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </article>
+
+        <div className="no-print mt-6 flex flex-wrap gap-3">
+          <PrintTicketButton label="Print Ticket" ticketSelector={ticketCardSelector} />
+          <Link
+            href="/my-bookings"
+            className="rounded-xl bg-primary text-on-primary px-5 py-3 hover:bg-primary-container hover:text-on-primary-container transition-colors focus-ring"
+          >
+            View My Bookings
+          </Link>
+          <Link
+            href="/search"
+            className="rounded-xl border border-primary text-primary px-5 py-3 hover:bg-primary hover:text-on-primary transition-colors focus-ring"
+          >
+            Book Another Flight
           </Link>
         </div>
-      </section>
-    );
-  }
-
-  return <ConfirmationCard booking={mapped.booking} flight={mapped.flight} />;
+      </div>
+    </section>
+  );
 }

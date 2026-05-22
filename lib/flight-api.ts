@@ -7,13 +7,13 @@ export type FlightSearchParams = {
 export type CreateBookingPayload = {
   flight_id: string;
   seat_id: string;
-  cabin_class: "economy" | "business" | "first";
-  passenger: {
+  total_price: number;
+  passengers: Array<{
     full_name: string;
     passport_no: string;
     nationality: string;
     dob: string;
-  };
+  }>;
 };
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {

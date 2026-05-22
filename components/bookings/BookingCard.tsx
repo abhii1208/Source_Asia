@@ -1,7 +1,9 @@
 import Link from "next/link";
 import StatusBadge from "@/components/ui/StatusBadge";
+import PrintTicketButton from "@/components/booking/PrintTicketButton";
 import type { BookingWithDetails } from "@/lib/types";
 import { formatCurrency, formatDateTime, formatDuration, formatTime } from "@/lib/utils";
+import { useUserStore } from "@/store/useUserStore";
 
 type BookingCardProps = {
   booking: BookingWithDetails;
@@ -18,9 +20,11 @@ export default function BookingCard({ booking, onCancel, onReschedule, disabled 
   const passengerNames = booking.passengers.map((passenger) => passenger.fullName).join(", ");
   const canCancel = booking.status !== "cancelled";
   const canReschedule = booking.status !== "cancelled";
+  const emailStatus = useUserStore((state) => state.ticketEmailStatus[booking.id]);
+  const ticketSelector = `#ticket-card-${booking.id}`;
 
   return (
-    <article className="glass-panel rounded-2xl p-5 md:p-7 shadow-soft border border-white/35">
+    <article id={`ticket-card-${booking.id}`} className="ticket-print-card glass-panel rounded-2xl p-5 md:p-7 shadow-soft border border-white/35">
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_auto] gap-4">
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3 justify-between">
@@ -59,9 +63,13 @@ export default function BookingCard({ booking, onCancel, onReschedule, disabled 
             <span>Booked: {formatDateTime(booking.bookedAt)}</span>
             <span>Passenger: {passengerNames || "Passenger details unavailable"}</span>
           </div>
+          {emailStatus === "sent" ? (
+            <p className="text-sm text-primary">Email sent to registered user after booking.</p>
+          ) : null}
         </div>
 
-        <div className="flex xl:flex-col gap-2 xl:w-[220px]">
+        <div className="no-print flex xl:flex-col gap-2 xl:w-[220px]">
+          <PrintTicketButton label="Print Ticket" ticketSelector={ticketSelector} className="flex-1" />
           <Link
             href={`/my-bookings/${booking.id}`}
             className="flex-1 text-center rounded-xl border border-primary text-primary px-4 py-3 hover:bg-primary hover:text-on-primary transition-colors focus-ring"

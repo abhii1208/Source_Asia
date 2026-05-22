@@ -21,6 +21,8 @@ The app supports flight search, seat selection, booking management, Supabase Aut
 - Interactive seat map UI
 - Supabase Realtime seat availability sync
 - Booking confirmation with PNR
+- Ticket print support with browser print flow
+- Ticket confirmation email delivery via secure server route (Resend)
 - My Bookings list and Booking Details view
 - Reschedule booking via `reschedule_booking_atomic`
 - Cancel booking via `cancel_booking_atomic`
@@ -51,11 +53,15 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 DATABASE_URL=
+RESEND_API_KEY=
+EMAIL_FROM=
+NEXT_PUBLIC_APP_URL=
 ```
 
 Notes:
 - Client components must only use public keys.
 - `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be imported into client components.
+- `RESEND_API_KEY` and `EMAIL_FROM` are server-only and used for ticket delivery emails.
 - If using anon key only, set `NEXT_PUBLIC_SUPABASE_ANON_KEY`.  
   If using publishable key naming, set `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 
@@ -88,6 +94,13 @@ Open:
 - Flight results fallback:
   - Live search tries Supabase first.
   - On no results or fetch error, curated upcoming flights are shown instead of a dead error state.
+
+## Ticket Email Delivery
+- Supabase Auth built-in email is only for authentication emails (login/signup/password flows).
+- Custom ticket confirmation emails are sent from the secure Next.js server route using Resend.
+- If `RESEND_API_KEY` or `EMAIL_FROM` is missing, booking still succeeds and email delivery is skipped safely.
+- This setup can later be moved to Supabase Edge Functions if desired.
+- Supabase docs also support sending emails from Edge Functions using Resend.
 
 ## Zustand Store Explanation
 - `useFlightStore` stores:

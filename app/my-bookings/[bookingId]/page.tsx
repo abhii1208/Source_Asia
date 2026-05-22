@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import RescheduleModal from "@/components/bookings/RescheduleModal";
+import PrintTicketButton from "@/components/booking/PrintTicketButton";
 import StatusBadge from "@/components/ui/StatusBadge";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
@@ -33,6 +34,7 @@ export default function BookingDetailPage() {
   const params = useParams<{ bookingId: string }>();
   const router = useRouter();
   const userStore = useUserStore();
+  const bookingEmailStatus = useUserStore((state) => state.ticketEmailStatus[params.bookingId ?? ""]);
   const [booking, setBooking] = useState<BookingWithDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -384,12 +386,15 @@ export default function BookingDetailPage() {
         </div>
       ) : null}
 
-      <div className="glass-panel rounded-2xl p-6 md:p-8 shadow-glass">
+      <div id={`booking-ticket-${booking.id}`} className="ticket-print-card glass-panel rounded-2xl p-6 md:p-8 shadow-glass">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="font-headline-lg text-headline-lg">Booking {booking.id}</h1>
             <p className="text-on-surface-variant">PNR: {booking.pnrCode}</p>
             <p className="text-on-surface-variant text-sm">Booked at: {formatDateTime(booking.bookedAt)}</p>
+            {bookingEmailStatus === "sent" ? (
+              <p className="text-sm text-primary mt-2">Email sent to registered user after booking.</p>
+            ) : null}
           </div>
           <StatusBadge status={booking.status} />
         </div>
@@ -442,7 +447,8 @@ export default function BookingDetailPage() {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-3 mt-6">
+        <div className="no-print flex flex-wrap gap-3 mt-6">
+          <PrintTicketButton label="Print Ticket" ticketSelector={`#booking-ticket-${booking.id}`} />
           {canEdit ? (
             <button
               type="button"

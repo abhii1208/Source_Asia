@@ -14,6 +14,7 @@ import { buildDemoSeatDefinitions, mapSupabaseSeatRows, type SupabaseSeatRow } f
 import type { CabinClass, Flight } from "@/lib/types";
 import { isUuid } from "@/lib/booking-data";
 import { useFlightStore } from "@/store/useFlightStore";
+import { useUserStore } from "@/store/useUserStore";
 
 function findFallbackFlight(flightId: string): Flight | null {
   const popular = buildPopularFlights({});
@@ -40,7 +41,11 @@ function SeatSelectionPageContent() {
   const selectedSeat = useFlightStore((state) => state.selectedSeat);
   const setSelectedSeat = useFlightStore((state) => state.setSelectedSeat);
   const setCurrentBookingStep = useFlightStore((state) => state.setCurrentBookingStep);
+  const setSelectedFlight = useFlightStore((state) => state.setSelectedFlight);
   const passengerFormData = useFlightStore((state) => state.passengerFormData);
+  const searchQuery = useFlightStore((state) => state.searchQuery);
+  const clearSensitivePassengerData = useFlightStore((state) => state.clearSensitivePassengerData);
+  const setTicketEmailStatus = useUserStore((state) => state.setTicketEmailStatus);
 
   const flightId = params.flightId || "";
   const cabinClass = (searchParams.get("cabinClass") ?? "economy") as CabinClass;
@@ -176,6 +181,15 @@ function SeatSelectionPageContent() {
       return;
     }
 
+    if (!selectedFlight || selectedFlight.id !== safeFlight.id) {
+      setSelectedFlight(safeFlight, cabinClass);
+    }
+
+    if (!selectedSeat && !seat) {
+      setBookingError("Please choose your seat before confirming the ticket.");
+      return;
+    }
+
     const selectedSeatDefinition = safeFlight.seats.find((item) => item.id === seat) ?? null;
     const seatUuid = selectedSeatDefinition?.seatUuid ?? (isUuid(seat) ? seat : null);
 
@@ -201,6 +215,9 @@ function SeatSelectionPageContent() {
     setBookingError(null);
 
     try {
+      const passengerCount = Math.max(1, searchQuery.passengerCount);
+      const totalPrice = Math.round((safeFlight.basePrice + Number(selectedSeatDefinition?.priceDelta ?? 0)) * passengerCount);
+
       const response = await fetch("/api/bookings/create", {
         method: "POST",
         headers: {
@@ -209,38 +226,70 @@ function SeatSelectionPageContent() {
         body: JSON.stringify({
           flight_id: safeFlight.id,
           seat_id: seatUuid,
-          cabin_class: cabinClass,
-          passenger: {
-            full_name: passengerFormData.fullName.trim(),
-            passport_no: passengerFormData.passportNumber.trim().toUpperCase(),
-            nationality: passengerFormData.nationality.trim(),
-            dob: passengerFormData.dateOfBirth
-          }
+          total_price: totalPrice,
+          passengers: [
+            {
+              full_name: passengerFormData.fullName.trim(),
+              passport_no: passengerFormData.passportNumber.trim().toUpperCase(),
+              nationality: passengerFormData.nationality.trim(),
+              dob: passengerFormData.dateOfBirth
+            }
+          ]
         })
       });
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as { message?: string } | null;
-        setSelectedSeat(null);
-        setCurrentBookingStep("seat");
-        setBookingError(payload?.message ?? "Unable to create booking right now. Please try again.");
+        const seatConflict =
+          response.status === 409 ||
+          payload?.message?.toLowerCase().includes("seat was just booked") ||
+          payload?.message?.toLowerCase().includes("select another seat");
+
+        if (seatConflict) {
+          setSelectedSeat(null);
+          setCurrentBookingStep("seat");
+          setBookingError("This seat was just booked. Please select another seat.");
+          return;
+        }
+
+        setBookingError(payload?.message ?? "Unable to confirm ticket right now. Please try again.");
         return;
       }
 
-      const payload = (await response.json()) as { success: boolean; bookingId?: string; message?: string };
+      const payload = (await response.json()) as {
+        success: boolean;
+        bookingId?: string;
+        emailSent?: boolean;
+        emailStatus?: "sent" | "not_configured" | "failed";
+        message?: string;
+      };
       if (!payload.success || typeof payload.bookingId !== "string") {
         setSelectedSeat(null);
         setCurrentBookingStep("seat");
-        setBookingError(payload.message ?? "Unable to create booking right now. Please try again.");
+        setBookingError(payload.message ?? "Unable to confirm ticket right now. Please try again.");
         return;
       }
 
+      clearSensitivePassengerData();
+      if (payload.emailStatus) {
+        setTicketEmailStatus(payload.bookingId, payload.emailStatus);
+      }
       setCurrentBookingStep("confirm");
-      router.push(`/booking/confirmation/${payload.bookingId}`);
+      const confirmationQuery = new URLSearchParams();
+      if (typeof payload.emailSent === "boolean") {
+        confirmationQuery.set("emailSent", payload.emailSent ? "true" : "false");
+      }
+      if (payload.emailStatus) {
+        confirmationQuery.set("emailStatus", payload.emailStatus);
+      }
+      const confirmationPath = confirmationQuery.toString()
+        ? `/booking/confirmation/${payload.bookingId}?${confirmationQuery.toString()}`
+        : `/booking/confirmation/${payload.bookingId}`;
+      router.push(confirmationPath);
     } catch {
       setSelectedSeat(null);
       setCurrentBookingStep("seat");
-      setBookingError("Unable to create booking right now. Please try again.");
+      setBookingError("Unable to confirm ticket right now. Please try again.");
     } finally {
       setBookingSubmitting(false);
     }

@@ -1,123 +1,51 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient, getSupabaseServerClientError } from "@/lib/supabase/server";
-import type { CabinClass } from "@/lib/types";
-import { isUuid } from "@/lib/booking-data";
+import { getBookingDetails } from "@/lib/bookings/get-booking-details";
+import { sendTicketEmail, type TicketEmailStatus } from "@/lib/email/send-ticket-email";
 
-type PassengerInput = {
-  full_name: string;
-  passport_no: string;
-  nationality: string;
-  dob: string;
-};
+const passengerSchema = z.object({
+  full_name: z.string().trim().min(3),
+  passport_no: z
+    .string()
+    .trim()
+    .min(6)
+    .max(16)
+    .regex(/^[A-Z0-9]+$/i),
+  nationality: z.string().trim().min(2),
+  dob: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/)
+});
 
-type CreateBookingInput = {
-  flight_id: string;
-  seat_id: string;
-  cabin_class: CabinClass;
-  passenger: PassengerInput;
-};
+const createBookingSchema = z.object({
+  flight_id: z.string().uuid(),
+  seat_id: z.string().uuid(),
+  passengers: z.array(passengerSchema).min(1),
+  total_price: z.number().finite().positive()
+});
 
-type FlightPriceRow = {
-  id: string;
-  base_price: number | string;
-};
-
-type SeatPriceRow = {
-  id: string;
-  flight_id: string;
-  extra_fee: number | string | null;
-  is_available: boolean;
-};
-
-function toCabinClass(value: unknown): CabinClass | null {
-  if (value === "economy" || value === "business" || value === "first") {
-    return value;
-  }
-  return null;
-}
-
-function isIsoDate(value: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(value);
-}
-
-function parsePassenger(value: unknown): PassengerInput | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const candidate = value as Partial<PassengerInput>;
-
-  if (
-    typeof candidate.full_name !== "string" ||
-    typeof candidate.passport_no !== "string" ||
-    typeof candidate.nationality !== "string" ||
-    typeof candidate.dob !== "string"
-  ) {
-    return null;
-  }
-
-  const fullName = candidate.full_name.trim();
-  const passport = candidate.passport_no.trim().toUpperCase();
-  const nationality = candidate.nationality.trim();
-  const dob = candidate.dob.trim();
-
-  if (fullName.length < 3 || !/^[A-Z0-9]{6,10}$/.test(passport) || nationality.length < 2 || !isIsoDate(dob)) {
-    return null;
-  }
-
-  return {
-    full_name: fullName,
-    passport_no: passport,
-    nationality,
-    dob
-  };
-}
-
-function parseInput(value: unknown): CreateBookingInput | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const candidate = value as Partial<CreateBookingInput>;
-  const cabinClass = toCabinClass(candidate.cabin_class);
-  const passenger = parsePassenger(candidate.passenger);
-
-  if (
-    typeof candidate.flight_id !== "string" ||
-    typeof candidate.seat_id !== "string" ||
-    !isUuid(candidate.flight_id) ||
-    !isUuid(candidate.seat_id) ||
-    !cabinClass ||
-    !passenger
-  ) {
-    return null;
-  }
-
-  return {
-    flight_id: candidate.flight_id,
-    seat_id: candidate.seat_id,
-    cabin_class: cabinClass,
-    passenger
-  };
-}
-
-function cabinMultiplier(cabinClass: CabinClass): number {
-  if (cabinClass === "business") {
-    return 2.1;
-  }
-  if (cabinClass === "first") {
-    return 3.4;
-  }
-  return 1;
-}
+type CreateBookingPayload = z.infer<typeof createBookingSchema>;
 
 function generatePnrCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let value = "AM";
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let pnr = "AM";
+
   for (let index = 0; index < 6; index += 1) {
-    value += chars[Math.floor(Math.random() * chars.length)];
+    pnr += chars[Math.floor(Math.random() * chars.length)];
   }
-  return value;
+
+  return pnr;
+}
+
+function normalizePayload(payload: CreateBookingPayload): CreateBookingPayload {
+  return {
+    ...payload,
+    passengers: payload.passengers.map((passenger) => ({
+      full_name: passenger.full_name.trim(),
+      passport_no: passenger.passport_no.trim().toUpperCase(),
+      nationality: passenger.nationality.trim(),
+      dob: passenger.dob.trim()
+    }))
+  };
 }
 
 export async function POST(request: Request) {
@@ -129,7 +57,7 @@ export async function POST(request: Request) {
   const supabase = createSupabaseServerClient();
   if (!supabase) {
     return NextResponse.json(
-      { success: false, message: "Supabase server client is not available." },
+      { success: false, message: "Unable to confirm ticket right now. Please try again." },
       { status: 500 }
     );
   }
@@ -139,98 +67,129 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ success: false, message: "Authentication required." }, { status: 401 });
-  }
-
-  let payload: unknown;
-  try {
-    payload = await request.json();
-  } catch {
-    return NextResponse.json({ success: false, message: "Invalid request payload." }, { status: 400 });
-  }
-
-  const input = parseInput(payload);
-  if (!input) {
     return NextResponse.json(
       {
         success: false,
-        message: "flight_id, seat_id, cabin_class, and passenger details are required in valid format."
+        message: "Please login to confirm your ticket."
+      },
+      { status: 401 }
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Passenger details are incomplete."
       },
       { status: 400 }
     );
   }
 
-  const [flightResponse, seatResponse] = await Promise.all([
-    supabase.from("flights").select("id, base_price").eq("id", input.flight_id).single<FlightPriceRow>(),
-    supabase
-      .from("seats")
-      .select("id, flight_id, extra_fee, is_available")
-      .eq("id", input.seat_id)
-      .single<SeatPriceRow>()
-  ]);
-
-  if (flightResponse.error || !flightResponse.data) {
-    return NextResponse.json({ success: false, message: "Selected flight not found." }, { status: 404 });
-  }
-
-  if (seatResponse.error || !seatResponse.data) {
-    return NextResponse.json({ success: false, message: "Selected seat not found." }, { status: 404 });
-  }
-
-  const seat = seatResponse.data;
-  if (seat.flight_id !== input.flight_id) {
+  const parsed = createBookingSchema.safeParse(body);
+  if (!parsed.success) {
     return NextResponse.json(
-      { success: false, message: "Selected seat does not belong to the selected flight." },
+      {
+        success: false,
+        message: "Passenger details are incomplete."
+      },
       { status: 400 }
     );
   }
 
-  if (!seat.is_available) {
-    return NextResponse.json({ success: false, message: "Selected seat is no longer available." }, { status: 409 });
-  }
-
-  const basePrice = Number(flightResponse.data.base_price);
-  const seatFee = Number(seat.extra_fee ?? 0);
-  const totalPrice = Math.round(basePrice * cabinMultiplier(input.cabin_class) + seatFee);
+  const payload = normalizePayload(parsed.data);
   const pnrCode = generatePnrCode();
 
-  const { data, error } = await supabase.rpc("reserve_seat_and_create_booking", {
-    p_flight_id: input.flight_id,
-    p_seat_id: input.seat_id,
-    p_total_price: totalPrice,
+  const { data: rpcResult, error: rpcError } = await supabase.rpc("reserve_seat_and_create_booking", {
+    p_flight_id: payload.flight_id,
+    p_seat_id: payload.seat_id,
+    p_total_price: payload.total_price,
     p_pnr_code: pnrCode,
-    p_passengers: [
-      {
-        full_name: input.passenger.full_name,
-        passport_no: input.passenger.passport_no,
-        nationality: input.passenger.nationality,
-        dob: input.passenger.dob
-      }
-    ]
+    p_passengers: payload.passengers
   });
 
-  if (error) {
-    const message = error.message.toLowerCase();
-    if (message.includes("seat is no longer available")) {
-      return NextResponse.json({ success: false, message: "Selected seat is no longer available." }, { status: 409 });
+  if (rpcError) {
+    const lowerMessage = rpcError.message.toLowerCase();
+
+    if (lowerMessage.includes("authentication required")) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Please login to confirm your ticket."
+        },
+        { status: 401 }
+      );
     }
 
-    if (message.includes("authentication required")) {
-      return NextResponse.json({ success: false, message: "Authentication required." }, { status: 401 });
+    if (lowerMessage.includes("seat is no longer available") || lowerMessage.includes("seat is not available")) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "This seat was just booked. Please select another seat."
+        },
+        { status: 409 }
+      );
     }
 
-    return NextResponse.json({ success: false, message: "Unable to create booking right now." }, { status: 500 });
+    if (lowerMessage.includes("passenger")) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Passenger details are incomplete."
+        },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Unable to confirm ticket right now. Please try again."
+      },
+      { status: 500 }
+    );
   }
 
-  const bookingId = typeof data === "string" ? data : null;
+  const bookingId = typeof rpcResult === "string" ? rpcResult : null;
   if (!bookingId) {
-    return NextResponse.json({ success: false, message: "Booking could not be created." }, { status: 500 });
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Unable to confirm ticket right now. Please try again."
+      },
+      { status: 500 }
+    );
+  }
+
+  let emailSent = false;
+  let emailStatus: TicketEmailStatus = "failed";
+
+  const details = await getBookingDetails({
+    supabase,
+    bookingId,
+    userId: user.id
+  });
+
+  if (details) {
+    const emailResult = await sendTicketEmail({
+      to: details.userEmail ?? user.email ?? null,
+      booking: details.booking,
+      flight: details.flight,
+      seat: details.seat,
+      passengers: details.passengers
+    });
+    emailSent = emailResult.emailSent;
+    emailStatus = emailResult.emailStatus;
   }
 
   return NextResponse.json({
     success: true,
     bookingId,
-    pnr: pnrCode,
-    totalPrice
+    pnrCode,
+    emailSent,
+    emailStatus
   });
 }

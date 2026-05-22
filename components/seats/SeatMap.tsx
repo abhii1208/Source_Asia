@@ -274,7 +274,7 @@ export default function SeatMap({
             onClick={confirmSeat}
             className="bg-primary text-on-primary rounded-xl px-6 py-3 text-headline-md font-headline-md hover:bg-primary-container hover:text-on-primary-container transition-colors disabled:opacity-60 focus-ring"
           >
-            {confirming ? "Confirming..." : "Confirm Booking"}
+            {confirming ? "Confirming ticket..." : "Confirm Booking"}
           </button>
         </div>
       </div>
