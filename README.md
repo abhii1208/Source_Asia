@@ -18,6 +18,7 @@ The app supports flight search, seat selection, booking management, Supabase Aut
 - Flight search by route/date/passengers/class
 - Supabase-first results with curated fallback flights when live data is unavailable
 - Passenger form step
+- Passport number is optional; full name, nationality, and DOB remain required
 - Interactive seat map UI
 - Supabase Realtime seat availability sync
 - Booking confirmation with PNR
@@ -40,6 +41,8 @@ The app supports flight search, seat selection, booking management, Supabase Aut
    - `supabase/migrations/004_seed_data.sql`
    - `supabase/migrations/005_debug_checks.sql`
    - `supabase/migrations/006_airline_and_popular_seed.sql`
+   - `supabase/migrations/006_make_passport_optional.sql`
+   - `supabase/migrations/007_update_booking_rpc_optional_passport.sql`
 4. Enable Realtime for `public.seats`:
    - Supabase Dashboard -> Database -> Replication -> toggle `seats`
    - or confirm `supabase_realtime` publication includes `public.seats`
@@ -99,6 +102,7 @@ Open:
 - Supabase Auth built-in email is only for authentication emails (login/signup/password flows).
 - Custom ticket confirmation emails are sent from the secure Next.js server route using Resend.
 - If `RESEND_API_KEY` or `EMAIL_FROM` is missing, booking still succeeds and email delivery is skipped safely.
+- If email sending fails at runtime, booking still succeeds and users can print/download the ticket from confirmation and My Bookings.
 - This setup can later be moved to Supabase Edge Functions if desired.
 - Supabase docs also support sending emails from Edge Functions using Resend.
 
@@ -207,6 +211,9 @@ If direct DB connection fails in restricted IPv4 networks, use Supabase **Sessio
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (optional if publishable key already set)
    - `SUPABASE_SERVICE_ROLE_KEY` (server-only)
    - `DATABASE_URL` (optional if used)
+   - `RESEND_API_KEY` (server-only for ticket emails)
+   - `EMAIL_FROM` (server-only sender address)
+   - `NEXT_PUBLIC_APP_URL` (optional; used in ticket email links)
 4. Build command: `npm run build`
 5. Output: Next.js default
 6. Deploy.

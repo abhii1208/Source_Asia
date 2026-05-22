@@ -1,20 +1,12 @@
+import type { BookingCreateInput } from "@/lib/types";
+
 export type FlightSearchParams = {
   from?: string;
   to?: string;
   date?: string;
 };
 
-export type CreateBookingPayload = {
-  flight_id: string;
-  seat_id: string;
-  total_price: number;
-  passengers: Array<{
-    full_name: string;
-    passport_no: string;
-    nationality: string;
-    dob: string;
-  }>;
-};
+export type CreateBookingPayload = BookingCreateInput;
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {

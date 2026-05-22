@@ -202,7 +202,6 @@ function SeatSelectionPageContent() {
 
     if (
       passengerFormData.fullName.trim().length < 3 ||
-      passengerFormData.passportNumber.trim().length < 6 ||
       passengerFormData.nationality.trim().length < 2 ||
       !passengerFormData.dateOfBirth
     ) {
@@ -230,7 +229,7 @@ function SeatSelectionPageContent() {
           passengers: [
             {
               full_name: passengerFormData.fullName.trim(),
-              passport_no: passengerFormData.passportNumber.trim().toUpperCase(),
+              passport_no: passengerFormData.passportNumber.trim().toUpperCase() || null,
               nationality: passengerFormData.nationality.trim(),
               dob: passengerFormData.dateOfBirth
             }

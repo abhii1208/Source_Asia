@@ -40,7 +40,7 @@ type SeatRow = {
 type PassengerRow = {
   id: string;
   full_name: string;
-  passport_no: string;
+  passport_no: string | null;
   nationality: string;
   dob: string;
 };
@@ -75,7 +75,7 @@ export type BookingDetails = {
   passengers: Array<{
     id: string;
     fullName: string;
-    passportNo: string;
+    passportNo: string | null;
     nationality: string;
     dateOfBirth: string;
   }>;
@@ -180,7 +180,7 @@ export async function getBookingDetails({
     passengers: (data.passengers ?? []).map((passenger) => ({
       id: passenger.id,
       fullName: passenger.full_name,
-      passportNo: passenger.passport_no,
+      passportNo: passenger.passport_no ?? null,
       nationality: passenger.nationality,
       dateOfBirth: passenger.dob
     })),

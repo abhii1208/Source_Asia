@@ -26,7 +26,8 @@ export default function PassengerForm({ initialValue, onSubmit }: PassengerFormP
     if (value.fullName.trim().length < 3) {
       nextErrors.fullName = "Full name must be at least 3 characters.";
     }
-    if (!/^[A-Z0-9]{6,10}$/i.test(value.passportNumber)) {
+    const trimmedPassport = value.passportNumber.trim();
+    if (trimmedPassport.length > 0 && !/^[A-Z0-9]{6,10}$/i.test(trimmedPassport)) {
       nextErrors.passportNumber = "Passport number should be 6-10 letters/numbers.";
     }
     if (value.nationality.trim().length < 2) {
@@ -69,7 +70,7 @@ export default function PassengerForm({ initialValue, onSubmit }: PassengerFormP
       </label>
 
       <label className="block">
-        <span className="font-label-caps text-label-caps text-on-surface-variant">Passport Number</span>
+        <span className="font-label-caps text-label-caps text-on-surface-variant">Passport Number (Optional)</span>
         <input
           type="text"
           value={value.passportNumber}
@@ -112,4 +113,3 @@ export default function PassengerForm({ initialValue, onSubmit }: PassengerFormP
     </form>
   );
 }
-

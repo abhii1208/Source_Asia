@@ -17,15 +17,16 @@ type ConfirmationPageProps = {
 };
 
 function resolveEmailNotice(searchParams: ConfirmationPageProps["searchParams"]): string {
-  const emailSent = searchParams?.emailSent === "true";
+  const emailSentValue = searchParams?.emailSent;
+  const emailSent = emailSentValue === "true" ? true : emailSentValue === "false" ? false : null;
   const emailStatus = searchParams?.emailStatus;
 
   if (emailSent || emailStatus === "sent") {
     return "We've sent your ticket to your registered email.";
   }
 
-  if (emailStatus === "not_configured") {
-    return "Ticket confirmed. Email delivery is not configured in this environment.";
+  if (emailSent === false || emailStatus === "not_configured" || emailStatus === "failed") {
+    return "Your ticket is confirmed. Email delivery is not configured or failed, but you can print your ticket here.";
   }
 
   return "Your ticket is ready. You can print it or view it anytime from My Bookings.";

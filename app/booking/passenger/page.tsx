@@ -38,12 +38,13 @@ function PassengerPageContent() {
   }, [searchParams, selectedFlight]);
 
   function handleSubmit(traveler: Traveler) {
+    const passportNumber = traveler.passportNumber?.trim() ?? "";
     setPassengerFormData({
       fullName: traveler.fullName,
-      passportNumber: traveler.passportNumber,
+      passportNumber,
       nationality: traveler.nationality,
       dateOfBirth: traveler.dateOfBirth,
-      passport_no: traveler.passport_no ?? traveler.passportNumber
+      passport_no: traveler.passport_no?.trim() || passportNumber || null
     });
     setCurrentBookingStep("seat");
     if (!flight) {

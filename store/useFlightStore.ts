@@ -11,7 +11,7 @@ export type PassengerFormData = {
   passportNumber: string;
   nationality: string;
   dateOfBirth: string;
-  passport_no: string;
+  passport_no: string | null;
 };
 
 type FlightSearchState = {
@@ -68,16 +68,17 @@ const defaultPassengerFormData: PassengerFormData = {
   passportNumber: "",
   nationality: "",
   dateOfBirth: "",
-  passport_no: ""
+  passport_no: null
 };
 
 function normalizePassenger(input: Partial<PassengerFormData>): PassengerFormData {
+  const normalizedPassport = (input.passportNumber ?? input.passport_no ?? "").toString();
   return {
     fullName: input.fullName ?? "",
-    passportNumber: input.passportNumber ?? input.passport_no ?? "",
+    passportNumber: normalizedPassport,
     nationality: input.nationality ?? "",
     dateOfBirth: input.dateOfBirth ?? "",
-    passport_no: input.passport_no ?? input.passportNumber ?? ""
+    passport_no: normalizedPassport.trim() || null
   };
 }
 
@@ -147,7 +148,7 @@ export const useFlightStore = create<FlightStore>()(
           passengerFormData: {
             ...state.passengerFormData,
             passportNumber: "",
-            passport_no: ""
+            passport_no: null
           }
         })),
       setPassenger: (passenger) =>
@@ -200,7 +201,7 @@ export const useFlightStore = create<FlightStore>()(
         passengerFormData: {
           ...state.passengerFormData,
           passportNumber: "",
-          passport_no: ""
+          passport_no: null
         }
       })
     }

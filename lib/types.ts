@@ -72,9 +72,23 @@ export type Passenger = {
   dateOfBirth: string;
   booking_id?: string;
   full_name?: string;
-  passport_no?: string;
+  passport_no?: string | null;
   dob?: string;
   created_at?: string;
+};
+
+export type PassengerInput = {
+  full_name: string;
+  passport_no?: string | null;
+  nationality: string;
+  dob: string;
+};
+
+export type BookingCreateInput = {
+  flight_id: string;
+  seat_id: string;
+  total_price: number;
+  passengers: PassengerInput[];
 };
 
 export type Traveler = Passenger;
@@ -137,6 +151,7 @@ export type SeatSummary = {
 export type PassengerSummary = {
   id: string;
   fullName: string;
+  passportNo?: string | null;
   nationality: string;
   dateOfBirth: string;
 };
