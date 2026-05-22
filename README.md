@@ -53,7 +53,6 @@ Create `.env.local` in project root:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 DATABASE_URL=
@@ -66,8 +65,17 @@ Notes:
 - Client components must only use public keys.
 - `SUPABASE_SERVICE_ROLE_KEY` is server-only and must never be imported into client components.
 - `RESEND_API_KEY` and `EMAIL_FROM` are server-only and used for ticket delivery emails.
-- If using anon key only, set `NEXT_PUBLIC_SUPABASE_ANON_KEY`.  
-  If using publishable key naming, set `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
+- If your setup uses `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, FlyAhead also supports that key alias.
+
+Ticket email env examples:
+- Local:
+  - `RESEND_API_KEY=your_resend_api_key`
+  - `EMAIL_FROM=FlyAhead <onboarding@resend.dev>`
+  - `NEXT_PUBLIC_APP_URL=http://localhost:3000`
+- Production:
+  - `RESEND_API_KEY=your_resend_api_key`
+  - `EMAIL_FROM=FlyAhead <your_verified_sender@yourdomain.com>`
+  - `NEXT_PUBLIC_APP_URL=https://your-production-url`
 
 ## Local Development
 ```bash
@@ -109,8 +117,11 @@ Flight continuity behavior:
 - Custom ticket confirmation emails are sent from the secure Next.js server route using Resend.
 - If `RESEND_API_KEY` or `EMAIL_FROM` is missing, booking still succeeds and email delivery is skipped safely.
 - If email sending fails at runtime, booking still succeeds and users can print/download the ticket from confirmation and My Bookings.
+- In production, `EMAIL_FROM` must use a verified Resend sender/domain.
+- `onboarding@resend.dev` is useful for quick local tests but has production/testing limitations.
 - This setup can later be moved to Supabase Edge Functions if desired.
 - Supabase docs also support sending emails from Edge Functions using Resend.
+- Development-only email diagnostics endpoint: `GET /api/debug/email` (returns config booleans and optional test send support).
 
 ## Zustand Store Explanation
 - `useFlightStore` stores:

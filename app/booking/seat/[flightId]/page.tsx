@@ -342,6 +342,7 @@ function SeatSelectionPageContent() {
         bookingId?: string;
         emailSent?: boolean;
         emailStatus?: "sent" | "not_configured" | "failed";
+        emailReason?: "missing_config" | "missing_user_email" | "send_failed";
         message?: string;
       };
       if (!payload.success || typeof payload.bookingId !== "string") {
@@ -362,6 +363,9 @@ function SeatSelectionPageContent() {
       }
       if (payload.emailStatus) {
         confirmationQuery.set("emailStatus", payload.emailStatus);
+      }
+      if (payload.emailReason) {
+        confirmationQuery.set("emailReason", payload.emailReason);
       }
       const confirmationPath = confirmationQuery.toString()
         ? `/booking/confirmation/${payload.bookingId}?${confirmationQuery.toString()}`

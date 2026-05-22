@@ -13,6 +13,7 @@ type ConfirmationPageProps = {
   searchParams?: {
     emailSent?: string;
     emailStatus?: string;
+    emailReason?: string;
   };
 };
 
@@ -20,13 +21,25 @@ function resolveEmailNotice(searchParams: ConfirmationPageProps["searchParams"])
   const emailSentValue = searchParams?.emailSent;
   const emailSent = emailSentValue === "true" ? true : emailSentValue === "false" ? false : null;
   const emailStatus = searchParams?.emailStatus;
+  const emailReason = searchParams?.emailReason;
+  const isDevelopment = process.env.NODE_ENV === "development";
 
   if (emailSent || emailStatus === "sent") {
     return "We've sent your ticket to your registered email.";
   }
 
-  if (emailSent === false || emailStatus === "not_configured" || emailStatus === "failed") {
-    return "Your ticket is confirmed. Email delivery is not configured or failed, but you can print your ticket here.";
+  if (
+    emailSent === false ||
+    emailStatus === "not_configured" ||
+    emailStatus === "failed" ||
+    emailReason === "missing_config" ||
+    emailReason === "missing_user_email" ||
+    emailReason === "send_failed"
+  ) {
+    if (isDevelopment) {
+      return "Ticket confirmed. Email was not sent because email delivery is not configured or failed. Check RESEND_API_KEY and EMAIL_FROM.";
+    }
+    return "Your ticket is confirmed. You can print it here or view it anytime from My Bookings.";
   }
 
   return "Your ticket is ready. You can print it or view it anytime from My Bookings.";

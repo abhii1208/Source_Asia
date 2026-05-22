@@ -3,9 +3,10 @@ import { Resend } from "resend";
 import type { BookingDetails } from "@/lib/bookings/get-booking-details";
 
 export type TicketEmailStatus = "sent" | "not_configured" | "failed";
+export type TicketEmailReason = "missing_config" | "missing_user_email" | "send_failed";
 
 type SendTicketEmailInput = {
-  to: string | null;
+  to: string;
   booking: BookingDetails["booking"];
   flight: BookingDetails["flight"];
   seat: BookingDetails["seat"];
@@ -15,6 +16,13 @@ type SendTicketEmailInput = {
 type SendTicketEmailResult = {
   emailSent: boolean;
   emailStatus: TicketEmailStatus;
+  emailReason?: TicketEmailReason;
+};
+
+type TicketEmailConfigState = {
+  resendConfigured: boolean;
+  emailFromConfigured: boolean;
+  configured: boolean;
 };
 
 function escapeHtml(value: string): string {
@@ -79,18 +87,26 @@ function buildEmailHtml({
   `;
 }
 
+export function getTicketEmailConfigState(): TicketEmailConfigState {
+  const resendConfigured = Boolean(process.env.RESEND_API_KEY?.trim());
+  const emailFromConfigured = Boolean(process.env.EMAIL_FROM?.trim());
+  return {
+    resendConfigured,
+    emailFromConfigured,
+    configured: resendConfigured && emailFromConfigured
+  };
+}
+
 export async function sendTicketEmail(input: SendTicketEmailInput): Promise<SendTicketEmailResult> {
-  const resendApiKey = process.env.RESEND_API_KEY?.trim();
-  const emailFrom = process.env.EMAIL_FROM?.trim();
+  const resendApiKey = process.env.RESEND_API_KEY?.trim() ?? "";
+  const emailFrom = process.env.EMAIL_FROM?.trim() ?? "";
+  const configState = getTicketEmailConfigState();
 
-  if (!resendApiKey || !emailFrom) {
-    console.warn("Ticket email delivery is not configured: missing RESEND_API_KEY or EMAIL_FROM.");
-    return { emailSent: false, emailStatus: "not_configured" };
-  }
-
-  if (!input.to) {
-    console.warn(`Ticket email was skipped for booking ${input.booking.id}: user email is unavailable.`);
-    return { emailSent: false, emailStatus: "failed" };
+  if (!configState.configured) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Ticket email delivery is not configured: missing RESEND_API_KEY or EMAIL_FROM.");
+    }
+    return { emailSent: false, emailStatus: "not_configured", emailReason: "missing_config" };
   }
 
   try {
@@ -103,7 +119,9 @@ export async function sendTicketEmail(input: SendTicketEmailInput): Promise<Send
     });
     return { emailSent: true, emailStatus: "sent" };
   } catch (error) {
-    console.error("Failed to send ticket confirmation email.", error);
-    return { emailSent: false, emailStatus: "failed" };
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to send ticket confirmation email.", error);
+    }
+    return { emailSent: false, emailStatus: "failed", emailReason: "send_failed" };
   }
 }

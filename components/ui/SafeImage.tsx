@@ -39,15 +39,21 @@ export default function SafeImage({
   priority = false,
   fallbackGradient = "from-teal-500 to-emerald-200",
   fallbackLabel,
-  unoptimized = false,
+  unoptimized = true,
   ...layoutProps
 }: SafeImageProps) {
   const [hasError, setHasError] = useState(false);
+  const isFillLayout = "fill" in layoutProps && layoutProps.fill === true;
 
   const label = fallbackLabel?.trim() || alt;
 
   return (
-    <div className={cn("relative overflow-hidden", className)}>
+    <div
+      className={cn(
+        isFillLayout ? "absolute inset-0 overflow-hidden" : "relative overflow-hidden",
+        className
+      )}
+    >
       {!hasError ? (
         <Image
           src={src}
@@ -55,7 +61,7 @@ export default function SafeImage({
           sizes={sizes}
           priority={priority}
           unoptimized={unoptimized}
-          className={cn("object-cover object-center", imageClassName)}
+          className={cn(isFillLayout ? "h-full w-full object-cover object-center" : "object-cover object-center", imageClassName)}
           onError={() => setHasError(true)}
           {...layoutProps}
         />
@@ -78,4 +84,3 @@ export default function SafeImage({
     </div>
   );
 }
-

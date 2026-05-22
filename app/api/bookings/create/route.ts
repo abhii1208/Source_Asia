@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createSupabaseServerClient, getSupabaseServerClientError } from "@/lib/supabase/server";
 import { getBookingDetails } from "@/lib/bookings/get-booking-details";
-import { sendTicketEmail } from "@/lib/email/send-ticket-email";
+import { getTicketEmailConfigState, sendTicketEmail, type TicketEmailStatus } from "@/lib/email/send-ticket-email";
 import type { BookingCreateInput, PassengerInput } from "@/lib/types";
 
 const passportPattern = /^[A-Z0-9]{6,16}$/i;
@@ -40,6 +40,7 @@ type RpcResponse = {
   bookingId: string | null;
   errorMessage: string | null;
 };
+type EmailReason = "missing_config" | "missing_user_email" | "send_failed";
 
 function generatePnrCode(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -286,7 +287,8 @@ export async function POST(request: Request) {
   }
 
   let emailSent = false;
-  let emailStatus: "sent" | "not_configured" | "failed" = "failed";
+  let emailStatus: TicketEmailStatus = "not_configured";
+  let emailReason: EmailReason | undefined = "missing_config";
 
   const details = await getBookingDetails({
     supabase,
@@ -294,16 +296,37 @@ export async function POST(request: Request) {
     userId: user.id
   });
 
-  if (details) {
-    const emailResult = await sendTicketEmail({
-      to: details.userEmail ?? user.email ?? null,
-      booking: details.booking,
-      flight: details.flight,
-      seat: details.seat,
-      passengers: details.passengers
-    });
-    emailSent = emailResult.emailSent;
-    emailStatus = emailResult.emailStatus;
+  if (!details) {
+    emailStatus = "failed";
+    emailReason = "send_failed";
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(`Ticket email skipped for booking ${bookingId}: booking details could not be loaded.`);
+    }
+  } else {
+    const emailConfig = getTicketEmailConfigState();
+    const recipientEmail = details.userEmail ?? user.email ?? null;
+
+    if (!emailConfig.configured) {
+      emailStatus = "not_configured";
+      emailReason = "missing_config";
+    } else if (!recipientEmail) {
+      emailStatus = "failed";
+      emailReason = "missing_user_email";
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`Ticket email skipped for booking ${bookingId}: user email is missing.`);
+      }
+    } else {
+      const emailResult = await sendTicketEmail({
+        to: recipientEmail,
+        booking: details.booking,
+        flight: details.flight,
+        seat: details.seat,
+        passengers: details.passengers
+      });
+      emailSent = emailResult.emailSent;
+      emailStatus = emailResult.emailStatus;
+      emailReason = emailResult.emailReason;
+    }
   }
 
   return NextResponse.json({
@@ -311,6 +334,7 @@ export async function POST(request: Request) {
     bookingId,
     pnrCode,
     emailSent,
-    emailStatus
+    emailStatus,
+    emailReason
   });
 }
