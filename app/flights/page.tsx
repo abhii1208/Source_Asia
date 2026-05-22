@@ -46,7 +46,8 @@ export default async function FlightsPage({ searchParams = {} }: FlightsPageProp
       passengers={passengers}
       cabinClass={cabinClass}
       source={result.source}
-      fallbackReason={result.reason}
+      reason={result.reason}
+      dateAdjusted={result.dateAdjusted}
     />
   );
 }

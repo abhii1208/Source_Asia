@@ -1,13 +1,8 @@
-import { createSupabaseServerClient, getSupabaseServerClientError } from "@/lib/supabase/server";
+import { getDayRange, getNearestUpcomingFlights, isPastDate, normalizeSearchDate } from "@/lib/flights/date-utils";
+import { mapSupabaseFlightRowsToFlights, type SupabaseFlightRow } from "@/lib/flights/flight-transform";
 import { buildPopularFlights } from "@/lib/popular-flights";
-import type {
-  AirportCode,
-  CabinClass,
-  Flight,
-  FlightDataSource,
-  FlightFallbackReason,
-  FlightStatus
-} from "@/lib/types";
+import { createSupabaseServerClient, getSupabaseServerClientError } from "@/lib/supabase/server";
+import type { AirportCode, CabinClass, Flight, FlightDataSource, FlightSearchReason } from "@/lib/types";
 
 export type RawFlightSearchParams = {
   origin?: string | string[];
@@ -29,22 +24,11 @@ export type NormalizedFlightSearchParams = {
 
 export type FlightServiceResult = {
   source: FlightDataSource;
-  reason?: FlightFallbackReason;
+  reason: FlightSearchReason;
   flights: Flight[];
-};
-
-type SupabaseFlightRow = {
-  id: string;
-  flight_no: string;
-  airline?: string | null;
-  origin: string;
-  destination: string;
-  departs_at: string;
-  arrives_at: string;
-  aircraft_type: string;
-  status: string;
-  base_price: number | string;
-  created_at: string;
+  requestedDate?: string;
+  effectiveDate?: string;
+  dateAdjusted?: boolean;
 };
 
 type SeatAvailabilityRow = {
@@ -53,6 +37,8 @@ type SeatAvailabilityRow = {
 };
 
 const knownAirports: AirportCode[] = ["BLR", "DEL", "BOM", "HYD", "MAA", "CCU", "GOI"];
+const flightColumns =
+  "id, flight_no, airline, origin, destination, departs_at, arrives_at, aircraft_type, status, base_price, created_at";
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) {
@@ -97,153 +83,76 @@ function normalizeCabinClass(value: string | undefined): CabinClass {
   return "economy";
 }
 
-function classPrices(basePrice: number): Record<CabinClass, number> {
+function fallbackResult(
+  params: NormalizedFlightSearchParams,
+  reason: FlightSearchReason,
+  requestedDate?: string,
+  effectiveDate?: string,
+  dateAdjusted = false
+): FlightServiceResult {
   return {
-    economy: Math.round(basePrice),
-    business: Math.round(basePrice * 2.1),
-    first: Math.round(basePrice * 3.4)
+    source: "fallback",
+    reason,
+    flights: buildPopularFlights({
+      origin: params.origin,
+      destination: params.destination,
+      date: effectiveDate ?? requestedDate,
+      cabinClass: params.cabinClass
+    }),
+    requestedDate,
+    effectiveDate,
+    dateAdjusted
   };
 }
 
-function toStatus(status: string): FlightStatus {
-  if (
-    status === "scheduled" ||
-    status === "boarding" ||
-    status === "delayed" ||
-    status === "departed" ||
-    status === "landed" ||
-    status === "cancelled"
-  ) {
-    return status;
-  }
-  return "scheduled";
-}
-
-function durationMinutes(departsAt: string, arrivesAt: string): number {
-  const diff = new Date(arrivesAt).getTime() - new Date(departsAt).getTime();
-  if (!Number.isFinite(diff) || diff <= 0) {
-    return 0;
-  }
-  return Math.round(diff / 60000);
-}
-
-function toTags(basePrice: number, departsAt: string): string[] {
-  const tags: string[] = [];
-  if (basePrice <= 4000) {
-    tags.push("Cheapest");
-  } else if (basePrice <= 6000) {
-    tags.push("Best value");
-  } else {
-    tags.push("Premium");
+function mapFallbackFlightsToSupabase(
+  fallbackFlights: Flight[],
+  supabaseRows: SupabaseFlightRow[],
+  seatCounts: Map<string, number>
+): Flight[] {
+  if (fallbackFlights.length === 0 || supabaseRows.length === 0) {
+    return fallbackFlights;
   }
 
-  const hour = new Date(departsAt).getHours();
-  if (hour < 12) {
-    tags.push("Morning flight");
-  } else {
-    tags.push("Popular");
-  }
-  return tags;
-}
+  const rowByComposite = new Map<string, SupabaseFlightRow>();
+  supabaseRows.forEach((row) => {
+    const compositeKey = `${row.flight_no}|${row.origin}|${row.destination}|${(row.airline ?? "").toLowerCase()}`;
+    rowByComposite.set(compositeKey, row);
+  });
 
-function toTimeRange(date: string): { start: string; end: string } {
-  const dayStart = new Date(`${date}T00:00:00+05:30`);
-  const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
-  return {
-    start: dayStart.toISOString(),
-    end: dayEnd.toISOString()
-  };
-}
-
-function mapRowsToFlights(rows: SupabaseFlightRow[], availabilityMap: Map<string, number>): Flight[] {
-  return rows.map((row) => {
-    const basePrice = Number(row.base_price);
-    const computedDuration = durationMinutes(row.departs_at, row.arrives_at);
-    const prices = classPrices(basePrice);
-    const seatCount = availabilityMap.get(row.id);
+  return fallbackFlights.map((flight) => {
+    const key = `${flight.flightNo}|${flight.origin}|${flight.destination}|${(flight.airline ?? "").toLowerCase()}`;
+    const matched = rowByComposite.get(key);
+    if (!matched) {
+      return flight;
+    }
 
     return {
-      id: row.id,
-      flightNo: row.flight_no,
-      airline: row.airline ?? "FlyAhead",
-      origin: normalizeAirport(row.origin) ?? "BLR",
-      destination: normalizeAirport(row.destination) ?? "DEL",
-      departsAt: row.departs_at,
-      arrivesAt: row.arrives_at,
-      aircraftType: row.aircraft_type,
-      durationMinutes: computedDuration,
-      status: toStatus(row.status),
-      basePrice,
-      classPrices: prices,
-      availableCabinClasses: ["economy", "business", "first"],
-      availableSeatsCount: seatCount,
-      tags: toTags(basePrice, row.departs_at),
-      source: "supabase",
-      seats: [],
-      flight_no: row.flight_no,
-      airline_name: row.airline ?? "FlyAhead",
-      departs_at: row.departs_at,
-      arrives_at: row.arrives_at,
-      aircraft_type: row.aircraft_type,
-      base_price: basePrice,
-      class_options: ["economy", "business", "first"],
-      class_prices: prices,
-      available_seats_count: seatCount,
-      source_type: "supabase",
-      duration: computedDuration,
-      created_at: row.created_at
+      ...flight,
+      id: matched.id,
+      departsAt: matched.departs_at,
+      arrivesAt: matched.arrives_at,
+      flight_no: matched.flight_no,
+      airline_name: matched.airline ?? flight.airline ?? "FlyAhead",
+      departs_at: matched.departs_at,
+      arrives_at: matched.arrives_at,
+      aircraft_type: matched.aircraft_type,
+      availableSeatsCount: seatCounts.get(matched.id),
+      available_seats_count: seatCounts.get(matched.id),
+      isDemoFallback: false
     };
   });
 }
 
-async function fetchSupabaseRows(params: NormalizedFlightSearchParams): Promise<SupabaseFlightRow[] | null> {
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return null;
-  }
-
-  let query = supabase.from("flights").select("*").order("departs_at", { ascending: true });
-
-  if (params.origin) {
-    query = query.eq("origin", params.origin);
-  }
-  if (params.destination) {
-    query = query.eq("destination", params.destination);
-  }
-
-  if (params.date) {
-    const range = toTimeRange(params.date);
-    query = query.gte("departs_at", range.start).lt("departs_at", range.end);
-  } else {
-    query = query.gte("departs_at", new Date().toISOString());
-  }
-
-  const response = await query;
-
-  if (response.error) {
-    if (process.env.NODE_ENV !== "production") {
-      console.error("Supabase flights fetch failed", {
-        code: response.error.code,
-        message: response.error.message,
-        details: response.error.details,
-        hint: response.error.hint
-      });
-    }
-    return null;
-  }
-
-  return (response.data ?? []) as SupabaseFlightRow[];
-}
-
-async function fetchAvailableSeatCounts(flightIds: string[]): Promise<Map<string, number>> {
-  const availabilityMap = new Map<string, number>();
+async function fetchSeatCounts(flightIds: string[]): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
   if (flightIds.length === 0) {
-    return availabilityMap;
+    return counts;
   }
 
   const supabase = createSupabaseServerClient();
   if (!supabase) {
-    return availabilityMap;
+    return counts;
   }
 
   const { data, error } = await supabase
@@ -258,17 +167,103 @@ async function fetchAvailableSeatCounts(flightIds: string[]): Promise<Map<string
         message: error.message
       });
     }
-    return availabilityMap;
+    return counts;
   }
 
   ((data ?? []) as SeatAvailabilityRow[]).forEach((seat) => {
     if (!seat.is_available) {
       return;
     }
-    availabilityMap.set(seat.flight_id, (availabilityMap.get(seat.flight_id) ?? 0) + 1);
+    counts.set(seat.flight_id, (counts.get(seat.flight_id) ?? 0) + 1);
   });
 
-  return availabilityMap;
+  return counts;
+}
+
+async function fetchExactRouteDateRows(
+  params: NormalizedFlightSearchParams,
+  date: string
+): Promise<SupabaseFlightRow[] | null> {
+  const supabase = createSupabaseServerClient();
+  if (!supabase || !params.origin || !params.destination) {
+    return null;
+  }
+
+  const range = getDayRange(date);
+  const { data, error } = await supabase
+    .from("flights")
+    .select(flightColumns)
+    .eq("origin", params.origin)
+    .eq("destination", params.destination)
+    .gte("departs_at", range.start)
+    .lt("departs_at", range.end)
+    .order("departs_at", { ascending: true });
+
+  if (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Exact route/date query failed", {
+        code: error.code,
+        message: error.message
+      });
+    }
+    return null;
+  }
+
+  return (data ?? []) as SupabaseFlightRow[];
+}
+
+async function fetchUpcomingRouteRows(params: NormalizedFlightSearchParams): Promise<SupabaseFlightRow[] | null> {
+  const supabase = createSupabaseServerClient();
+  if (!supabase || !params.origin || !params.destination) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("flights")
+    .select(flightColumns)
+    .eq("origin", params.origin)
+    .eq("destination", params.destination)
+    .gte("departs_at", new Date().toISOString())
+    .order("departs_at", { ascending: true })
+    .limit(18);
+
+  if (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Nearest route query failed", {
+        code: error.code,
+        message: error.message
+      });
+    }
+    return null;
+  }
+
+  return getNearestUpcomingFlights((data ?? []) as SupabaseFlightRow[]);
+}
+
+async function fetchPopularUpcomingRows(limit = 12): Promise<SupabaseFlightRow[] | null> {
+  const supabase = createSupabaseServerClient();
+  if (!supabase) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("flights")
+    .select(flightColumns)
+    .gte("departs_at", new Date().toISOString())
+    .order("departs_at", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Popular flights query failed", {
+        code: error.code,
+        message: error.message
+      });
+    }
+    return null;
+  }
+
+  return getNearestUpcomingFlights((data ?? []) as SupabaseFlightRow[]);
 }
 
 export function normalizeFlightSearchParams(params: RawFlightSearchParams): NormalizedFlightSearchParams {
@@ -298,69 +293,83 @@ export function normalizeFlightSearchParams(params: RawFlightSearchParams): Norm
   };
 }
 
-export async function getFlightsFromSupabase(params: NormalizedFlightSearchParams): Promise<FlightServiceResult> {
-  const envError = getSupabaseServerClientError();
-  if (envError) {
-    return {
-      source: "fallback",
-      reason: "missing_env",
-      flights: []
-    };
-  }
-
-  const rows = await fetchSupabaseRows(params);
-  if (!rows) {
-    return {
-      source: "fallback",
-      reason: "supabase_error",
-      flights: []
-    };
-  }
-
-  const seatCounts = await fetchAvailableSeatCounts(rows.map((row) => row.id));
-  return {
-    source: "supabase",
-    flights: mapRowsToFlights(rows, seatCounts)
-  };
-}
-
-export function getPopularFallbackFlights(
-  params: NormalizedFlightSearchParams,
-  reason: FlightFallbackReason = "no_results"
-): FlightServiceResult {
-  const flights = buildPopularFlights({
-    origin: params.origin,
-    destination: params.destination,
-    date: params.date,
-    cabinClass: params.cabinClass
-  });
-
-  return {
-    source: "fallback",
-    reason,
-    flights
-  };
-}
-
 export async function getTimeAwareFlights(params: RawFlightSearchParams): Promise<FlightServiceResult> {
   const normalized = normalizeFlightSearchParams(params);
+  const requestedDate = normalized.date;
+  const dateAdjusted = requestedDate ? isPastDate(requestedDate) : false;
+  const effectiveDate = requestedDate ? (dateAdjusted ? normalizeSearchDate() : requestedDate) : normalizeSearchDate();
+
   if (!normalized.origin || !normalized.destination) {
-    return getPopularFallbackFlights(normalized, "no_results");
+    return fallbackResult(normalized, "popular_route", requestedDate, effectiveDate, dateAdjusted);
   }
 
-  const live = await getFlightsFromSupabase(normalized);
-
-  if (live.source === "supabase" && live.flights.length > 0) {
-    return live;
+  const envError = getSupabaseServerClientError();
+  if (envError) {
+    return fallbackResult(normalized, "supabase_error", requestedDate, effectiveDate, dateAdjusted);
   }
 
-  if (live.source === "supabase" && live.flights.length === 0) {
-    return getPopularFallbackFlights(normalized, "no_results");
+  const exactRows = requestedDate && !dateAdjusted
+    ? await fetchExactRouteDateRows(normalized, requestedDate)
+    : [];
+
+  if (requestedDate && !dateAdjusted && exactRows === null) {
+    return fallbackResult(normalized, "supabase_error", requestedDate, effectiveDate, false);
   }
 
-  if (live.reason === "missing_env") {
-    return getPopularFallbackFlights(normalized, "missing_env");
+  if (exactRows && exactRows.length > 0) {
+    const seatCounts = await fetchSeatCounts(exactRows.map((row) => row.id));
+    return {
+      source: "supabase",
+      reason: "exact_match",
+      flights: mapSupabaseFlightRowsToFlights(exactRows, seatCounts),
+      requestedDate,
+      effectiveDate: requestedDate
+    };
   }
 
-  return getPopularFallbackFlights(normalized, "supabase_error");
+  const nearestRows = await fetchUpcomingRouteRows(normalized);
+  if (nearestRows === null) {
+    return fallbackResult(normalized, "supabase_error", requestedDate, effectiveDate, dateAdjusted);
+  }
+
+  if (nearestRows.length > 0) {
+    const seatCounts = await fetchSeatCounts(nearestRows.map((row) => row.id));
+    return {
+      source: "supabase",
+      reason: "nearest_date",
+      flights: mapSupabaseFlightRowsToFlights(nearestRows, seatCounts),
+      requestedDate,
+      effectiveDate,
+      dateAdjusted
+    };
+  }
+
+  const popularRows = await fetchPopularUpcomingRows();
+  if (popularRows === null) {
+    return fallbackResult(normalized, "supabase_error", requestedDate, effectiveDate, dateAdjusted);
+  }
+
+  if (popularRows.length > 0) {
+    const seatCounts = await fetchSeatCounts(popularRows.map((row) => row.id));
+    return {
+      source: "supabase",
+      reason: "popular_route",
+      flights: mapSupabaseFlightRowsToFlights(popularRows, seatCounts),
+      requestedDate,
+      effectiveDate,
+      dateAdjusted
+    };
+  }
+
+  const fallback = fallbackResult(normalized, "popular_route", requestedDate, effectiveDate, dateAdjusted);
+  const rowsForMatching = await fetchPopularUpcomingRows(150);
+  if (!rowsForMatching) {
+    return fallback;
+  }
+  const fallbackSeatCounts = await fetchSeatCounts(rowsForMatching.map((row) => row.id));
+  return {
+    ...fallback,
+    flights: mapFallbackFlightsToSupabase(fallback.flights, rowsForMatching, fallbackSeatCounts)
+  };
 }
+

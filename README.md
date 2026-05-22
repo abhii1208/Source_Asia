@@ -16,7 +16,7 @@ The app supports flight search, seat selection, booking management, Supabase Aut
 
 ## Features
 - Flight search by route/date/passengers/class
-- Supabase-first results with curated fallback flights when live data is unavailable
+- Supabase-first results with automatic nearest-upcoming and popular-flight fallback behavior
 - Passenger form step
 - Passport number is optional; full name, nationality, and DOB remain required
 - Interactive seat map UI
@@ -43,6 +43,7 @@ The app supports flight search, seat selection, booking management, Supabase Aut
    - `supabase/migrations/006_airline_and_popular_seed.sql`
    - `supabase/migrations/006_make_passport_optional.sql`
    - `supabase/migrations/007_update_booking_rpc_optional_passport.sql`
+   - `supabase/migrations/008_add_airline_and_popular_seed_flights.sql`
 4. Enable Realtime for `public.seats`:
    - Supabase Dashboard -> Database -> Replication -> toggle `seats`
    - or confirm `supabase_realtime` publication includes `public.seats`
@@ -78,6 +79,11 @@ Open:
 - `http://localhost:3000/`
 - `http://localhost:3000/search`
 - `http://localhost:3000/my-bookings`
+
+Flight continuity behavior:
+- If exact date has no route matches, FlyAhead shows nearest upcoming flights for that route.
+- If route has no upcoming matches, FlyAhead shows popular available flights.
+- If live Supabase search is unavailable, FlyAhead shows fallback popular flights and keeps booking flow active.
 
 ## Database Explanation
 - `flights`: Route, timing, aircraft, status, and base fare.

@@ -25,6 +25,9 @@ export async function GET(request: Request) {
       success: true,
       source: result.source,
       reason: result.reason,
+      requestedDate: result.requestedDate,
+      effectiveDate: result.effectiveDate,
+      dateAdjusted: result.dateAdjusted,
       data: result.flights
     },
     { status: 200 }

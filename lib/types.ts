@@ -12,7 +12,7 @@ export type SeatClass = "first" | "business" | "economy";
 
 export type FlightDataSource = "supabase" | "fallback";
 
-export type FlightFallbackReason = "no_results" | "supabase_error" | "missing_env";
+export type FlightSearchReason = "exact_match" | "nearest_date" | "popular_route" | "supabase_error";
 
 export type Seat = {
   id: string;
@@ -218,7 +218,7 @@ export type SearchQuery = {
 
 export type FlightSearchMetadata = {
   source: FlightDataSource;
-  reason?: FlightFallbackReason;
+  reason?: FlightSearchReason;
 };
 
 export type SearchFormState = {

@@ -7,7 +7,7 @@ import DestinationImage from "@/components/flight/DestinationImage";
 import FlightFilters, { type FlightFilterState } from "@/components/flight/FlightFilters";
 import FlightResultsList from "@/components/flight/FlightResultsList";
 import { getDestinationImage } from "@/lib/destination-images";
-import type { AirportCode, CabinClass, Flight, FlightFallbackReason, FlightDataSource } from "@/lib/types";
+import type { AirportCode, CabinClass, Flight, FlightDataSource, FlightSearchReason } from "@/lib/types";
 import { useFlightStore } from "@/store/useFlightStore";
 
 type FlightsPageClientProps = {
@@ -18,7 +18,8 @@ type FlightsPageClientProps = {
   passengers: number;
   cabinClass: CabinClass;
   source: FlightDataSource;
-  fallbackReason?: FlightFallbackReason;
+  reason: FlightSearchReason;
+  dateAdjusted?: boolean;
 };
 
 const initialFilters: FlightFilterState = {
@@ -42,14 +43,20 @@ function departureHour(iso: string): number {
   return new Date(iso).getHours();
 }
 
-function fallbackMessage(reason?: FlightFallbackReason): string {
-  if (reason === "missing_env") {
-    return "Live Supabase configuration is missing, so we are showing curated upcoming flights to keep your booking flow active.";
+function resultsMessage(reason: FlightSearchReason, dateAdjusted?: boolean): string {
+  if (reason === "nearest_date" && dateAdjusted) {
+    return "Selected date is in the past, showing upcoming flights instead.";
   }
-  if (reason === "no_results") {
-    return "No live flights matched this search right now, so we are showing curated upcoming flights for similar routes.";
+  if (reason === "nearest_date") {
+    return "No flights were found for your selected date, so we are showing the nearest available flights.";
   }
-  return "We could not reach live Supabase flight data at this moment, so we're showing curated upcoming flights. You can still explore routes and continue the booking flow.";
+  if (reason === "popular_route") {
+    return "No exact route matches found. Showing popular available flights.";
+  }
+  if (reason === "supabase_error") {
+    return "Live flight data is temporarily unavailable. Showing popular flights for now.";
+  }
+  return "";
 }
 
 export default function FlightsPageClient({
@@ -60,7 +67,8 @@ export default function FlightsPageClient({
   passengers,
   cabinClass,
   source,
-  fallbackReason
+  reason,
+  dateAdjusted = false
 }: FlightsPageClientProps) {
   const router = useRouter();
   const [filters, setFilters] = useState<FlightFilterState>(initialFilters);
@@ -69,7 +77,7 @@ export default function FlightsPageClient({
   const setSelectedFlight = useFlightStore((state) => state.setSelectedFlight);
   const setCurrentBookingStep = useFlightStore((state) => state.setCurrentBookingStep);
   const setSearchQuery = useFlightStore((state) => state.setSearchQuery);
-  const isFallback = source === "fallback";
+  const showResultBanner = reason !== "exact_match";
   const originMeta = getDestinationImage(toAirportCode(origin, "BLR"));
   const destinationMeta = getDestinationImage(toAirportCode(destination, "DEL"));
 
@@ -127,7 +135,7 @@ export default function FlightsPageClient({
   function handleSelect(flight: Flight, selectedClass: CabinClass) {
     setSelectedFlight(flight, selectedClass);
     setCurrentBookingStep("passenger");
-    router.push("/booking/passenger");
+    router.push(`/booking/passenger?flightId=${encodeURIComponent(flight.id)}&cabinClass=${selectedClass}`);
   }
 
   function retryLiveSearch() {
@@ -182,10 +190,16 @@ export default function FlightsPageClient({
             </button>
           </div>
 
-          {isFallback ? (
+          {showResultBanner ? (
             <div className="mb-5 rounded-2xl border border-primary/30 bg-primary-container/10 p-4 md:p-5">
-              <h2 className="font-headline-md text-headline-md text-primary">Showing popular flights for now</h2>
-              <p className="mt-2 text-sm text-on-surface">{fallbackMessage(fallbackReason)}</p>
+              <h2 className="font-headline-md text-headline-md text-primary">
+                {reason === "nearest_date"
+                  ? "Showing nearest available flights"
+                  : reason === "popular_route"
+                    ? "Showing popular available flights"
+                    : "Showing fallback flight options"}
+              </h2>
+              <p className="mt-2 text-sm text-on-surface">{resultsMessage(reason, dateAdjusted)}</p>
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   type="button"
@@ -203,7 +217,7 @@ export default function FlightsPageClient({
               </div>
               {process.env.NODE_ENV !== "production" ? (
                 <p className="mt-3 text-xs text-on-surface-variant">
-                  Dev hint: Check NEXT_PUBLIC_SUPABASE_URL, anon key, migrations, RLS policy, and flights seed data.
+                  Dev hint: reason={reason}, source={source}, route={origin}-{destination}, date={date || "upcoming"}.
                 </p>
               ) : null}
             </div>
