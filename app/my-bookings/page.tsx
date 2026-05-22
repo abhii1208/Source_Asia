@@ -359,7 +359,7 @@ export default function MyBookingsPage() {
       <div className="grid grid-cols-1 xl:grid-cols-[360px_1fr] gap-8">
         <aside className="glass-panel rounded-2xl p-6 shadow-glass h-fit">
           <div className="flex items-center justify-between mb-5">
-            <h2 className="font-headline-lg text-headline-lg">AeroClub</h2>
+            <h2 className="font-headline-lg text-headline-lg">FlyClub</h2>
             <span className="material-symbols-outlined text-primary">award_star</span>
           </div>
           <div className="rounded-xl bg-surface-container p-5 border border-outline-variant/30">

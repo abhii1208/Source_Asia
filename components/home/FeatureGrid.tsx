@@ -56,7 +56,7 @@ export default function FeatureGrid() {
     <section className="py-section-gap px-gutter bg-surface-container-low">
       <div className="max-w-7xl mx-auto space-y-12">
         <div className="text-center">
-          <h2 className="font-headline-lg text-headline-lg text-on-background mb-4">Why AeroMint</h2>
+          <h2 className="font-headline-lg text-headline-lg text-on-background mb-4">Why FlyAhead</h2>
           <p className="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">
             A production-focused assignment build with realtime seats, secure auth, and full booking management.
           </p>

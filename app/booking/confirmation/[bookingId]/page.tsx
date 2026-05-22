@@ -88,7 +88,7 @@ export default async function BookingConfirmationPage({ params, searchParams }: 
   return (
     <section className="max-w-5xl mx-auto px-gutter py-10">
       <div className="glass-panel rounded-2xl p-6 md:p-8 shadow-glass">
-        <h1 className="font-headline-lg text-headline-lg text-on-surface">Thank you for booking with AeroMint</h1>
+        <h1 className="font-headline-lg text-headline-lg text-on-surface">Thank you for booking with FlyAhead</h1>
         <p className="text-on-surface-variant mt-1">Your ticket has been confirmed successfully.</p>
         <p className="mt-4 rounded-xl border border-primary/35 bg-primary-container/20 px-4 py-3 text-sm text-primary">
           {notice}

@@ -114,7 +114,7 @@ export default function LoginPage() {
         </button>
 
         <p className="text-on-surface-variant mt-4 text-center">
-          New to AeroMint?{" "}
+          New to FlyAhead?{" "}
           <Link href="/auth/register" className="text-primary hover:underline focus-ring rounded-sm">
             Create account
           </Link>

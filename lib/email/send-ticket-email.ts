@@ -55,7 +55,7 @@ function buildEmailHtml({
 
   return `
     <div style="font-family: Inter, Arial, sans-serif; color: #0f172a; line-height: 1.6;">
-      <h2 style="margin: 0 0 8px;">Thank you for booking with AeroMint</h2>
+      <h2 style="margin: 0 0 8px;">Thank you for booking with FlyAhead</h2>
       <p style="margin: 0 0 16px;">Your ticket has been confirmed successfully.</p>
       <p style="margin: 0 0 16px;"><strong>PNR:</strong> ${escapeHtml(booking.pnrCode)}</p>
       <p style="margin: 0;"><strong>Route:</strong> ${escapeHtml(flight.origin)} to ${escapeHtml(flight.destination)}</p>
@@ -98,7 +98,7 @@ export async function sendTicketEmail(input: SendTicketEmailInput): Promise<Send
     await resend.emails.send({
       from: emailFrom,
       to: input.to,
-      subject: `AeroMint Ticket Confirmed - PNR ${input.booking.pnrCode}`,
+      subject: `FlyAhead Ticket Confirmed - PNR ${input.booking.pnrCode}`,
       html: buildEmailHtml(input)
     });
     return { emailSent: true, emailStatus: "sent" };

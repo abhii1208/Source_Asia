@@ -87,7 +87,7 @@ export default function SearchPage() {
             Search Premium Flights
           </h1>
           <p className="font-body-lg text-body-lg text-on-primary-container/90 mt-3 max-w-3xl">
-            Plan your trip with live class pricing, route-based options, and a smooth end-to-end AeroMint booking flow.
+            Plan your trip with live class pricing, route-based options, and a smooth end-to-end FlyAhead booking flow.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             {trustChips.map((chip) => (
@@ -161,7 +161,7 @@ export default function SearchPage() {
       <section className="glass-panel rounded-2xl p-6 md:p-8 shadow-glass">
         <h2 className="font-headline-lg text-headline-lg text-on-background">Your journey, managed end-to-end</h2>
         <p className="text-on-surface-variant mt-2 max-w-3xl">
-          From search to confirmation and post-booking changes, AeroMint keeps every step structured and clear.
+          From search to confirmation and post-booking changes, FlyAhead keeps every step structured and clear.
         </p>
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {journeySteps.map((step) => (

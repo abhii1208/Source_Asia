@@ -8,7 +8,7 @@ alter table public.flights enable row level security;
 alter table public.seats enable row level security;
 
 alter table public.flights
-add column if not exists airline text not null default 'AeroMint';
+add column if not exists airline text not null default 'FlyAhead';
 
 drop policy if exists flights_read_authenticated on public.flights;
 drop policy if exists flights_read_public on public.flights;
@@ -56,7 +56,7 @@ order by origin, destination;
 
 select
   flight_no,
-  coalesce(airline, 'AeroMint') as airline,
+  coalesce(airline, 'FlyAhead') as airline,
   origin,
   destination,
   departs_at,

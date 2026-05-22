@@ -7,8 +7,8 @@ import InstallPrompt from "@/components/pwa/InstallPrompt";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AeroMint - Effortless Velocity",
-  description: "Book smarter and fly smoother with AeroMint.",
+  title: "FlyAhead - Effortless Velocity",
+  description: "Book smarter and fly smoother with FlyAhead.",
   manifest: "/manifest.json"
 };
 

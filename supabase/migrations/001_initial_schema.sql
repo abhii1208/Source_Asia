@@ -3,7 +3,7 @@ create extension if not exists "pgcrypto";
 create table if not exists public.flights (
   id uuid primary key default gen_random_uuid(),
   flight_no text unique not null,
-  airline text not null default 'AeroMint',
+  airline text not null default 'FlyAhead',
   origin text not null,
   destination text not null,
   departs_at timestamptz not null,

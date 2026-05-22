@@ -13,10 +13,10 @@ export default function Footer() {
       <div className="max-w-[1600px] mx-auto px-gutter grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
         <div className="flex flex-col gap-2">
           <Link href="/" className="focus-ring rounded-lg w-fit">
-            <span className="font-headline-md text-headline-md text-primary italic">AeroMint</span>
+            <span className="font-headline-md text-headline-md text-primary italic">FlyAhead</span>
           </Link>
           <p className="font-body-md text-body-md text-on-surface-variant">
-            (c) 2026 AeroMint Aerospace. Effortless Velocity.
+            (c) 2026 FlyAhead Aerospace. Effortless Velocity.
           </p>
           <p className="text-xs text-on-surface-variant">
             Built with Next.js, Supabase, Realtime, Zustand, and PWA support.

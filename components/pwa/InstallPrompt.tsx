@@ -10,7 +10,7 @@ type BeforeInstallPromptEvent = Event & {
   }>;
 };
 
-const DISMISS_KEY = "aeromint-pwa-install-dismissed";
+const DISMISS_KEY = "flyahead-pwa-install-dismissed";
 
 export default function InstallPrompt() {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
@@ -81,9 +81,9 @@ export default function InstallPrompt() {
   return (
     <aside className="fixed left-4 right-4 bottom-[84px] md:left-auto md:right-6 md:bottom-6 md:w-[420px] z-[80]">
       <div className="glass-panel rounded-2xl border border-primary/35 bg-primary-container/20 shadow-glass p-4">
-        <p className="font-headline-md text-headline-md text-primary">Install AeroMint App</p>
+        <p className="font-headline-md text-headline-md text-primary">Install FlyAhead App</p>
         <p className="text-sm text-on-surface mt-1">
-          Install AeroMint for faster access, cached flight views, and offline bookings support.
+          Install FlyAhead for faster access, cached flight views, and offline bookings support.
         </p>
         <div className="mt-4 flex gap-2 justify-end">
           <button

@@ -189,7 +189,7 @@ export const useFlightStore = create<FlightStore>()(
         }))
     }),
     {
-      name: "aeromint-flight-store",
+      name: "flyahead-flight-store",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         searchQuery: state.searchQuery,

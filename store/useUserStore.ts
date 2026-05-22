@@ -76,7 +76,7 @@ export const useUserStore = create<UserStore>()(
         }))
     }),
     {
-      name: "aeromint-user-store",
+      name: "flyahead-user-store",
       version: 3,
       storage: createJSONStorage(() => localStorage),
       migrate: (persistedState) => {

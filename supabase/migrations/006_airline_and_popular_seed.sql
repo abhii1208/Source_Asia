@@ -1,5 +1,5 @@
 alter table public.flights
-add column if not exists airline text not null default 'AeroMint';
+add column if not exists airline text not null default 'FlyAhead';
 
 insert into public.flights (
   id,

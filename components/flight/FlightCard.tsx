@@ -37,7 +37,7 @@ export default function FlightCard({ flight, onSelect, recommended = false }: Fl
         <div className="grid grid-cols-1 md:grid-cols-[170px_1fr_170px] items-center gap-4 md:gap-6">
           <div>
             <div className="w-fit rounded-full border border-primary/20 bg-primary-container/15 px-3 py-1 text-xs text-primary font-label-caps">
-              {flight.airline ?? "AeroMint"}
+              {flight.airline ?? "FlyAhead"}
             </div>
             <p className="font-headline-md text-headline-md leading-tight mt-3">{flight.flightNo}</p>
             <p className="text-on-surface-variant text-body-md">{flight.aircraftType}</p>

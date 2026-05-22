@@ -161,7 +161,7 @@ export async function getBookingDetails({
     flight: {
       id: flight.id,
       flightNo: flight.flight_no,
-      airline: flight.airline ?? "AeroMint",
+      airline: flight.airline ?? "FlyAhead",
       origin: flight.origin,
       destination: flight.destination,
       departsAt: flight.departs_at,

@@ -165,7 +165,7 @@ function mapRowsToFlights(rows: SupabaseFlightRow[], availabilityMap: Map<string
     return {
       id: row.id,
       flightNo: row.flight_no,
-      airline: row.airline ?? "AeroMint",
+      airline: row.airline ?? "FlyAhead",
       origin: normalizeAirport(row.origin) ?? "BLR",
       destination: normalizeAirport(row.destination) ?? "DEL",
       departsAt: row.departs_at,
@@ -181,7 +181,7 @@ function mapRowsToFlights(rows: SupabaseFlightRow[], availabilityMap: Map<string
       source: "supabase",
       seats: [],
       flight_no: row.flight_no,
-      airline_name: row.airline ?? "AeroMint",
+      airline_name: row.airline ?? "FlyAhead",
       departs_at: row.departs_at,
       arrives_at: row.arrives_at,
       aircraft_type: row.aircraft_type,

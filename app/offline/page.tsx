@@ -9,7 +9,7 @@ export default function OfflinePage() {
         </div>
         <h1 className="font-headline-lg text-headline-lg text-on-surface">You are offline</h1>
         <p className="font-body-lg text-body-lg text-on-surface-variant mt-3">
-          You&apos;re offline. Your last saved bookings are still available.
+          You&apos;re offline. Your last saved FlyAhead bookings are still available.
         </p>
         <p className="text-on-surface-variant mt-2">
           Reconnect to sync updates, confirm live status, and complete new bookings.

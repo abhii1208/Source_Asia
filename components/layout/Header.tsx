@@ -50,7 +50,7 @@ export default function Header() {
   const [authError, setAuthError] = useState<string | null>(null);
   const profileInitials = useMemo(() => {
     if (!userEmail) {
-      return "AM";
+      return "FA";
     }
     const [name] = userEmail.split("@");
     return name.slice(0, 2).toUpperCase();
@@ -137,7 +137,7 @@ export default function Header() {
         <Link href="/" className="flex items-center gap-2 focus-ring rounded-lg">
           <span className="material-symbols-outlined text-primary text-[30px]">flight_takeoff</span>
           <span className="font-headline-lg text-headline-lg tracking-tighter text-primary italic leading-none">
-            AeroMint
+            FlyAhead
           </span>
         </Link>
 

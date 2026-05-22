@@ -1,4 +1,4 @@
-# AeroMint - Flight Management Web App
+# FlyAhead - Flight Management Web App
 
 ## Overview
 Responsive, production-like flight booking web app built for internship assignment requirements.  

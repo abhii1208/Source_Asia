@@ -14,7 +14,7 @@ const withPWA = withPWAInit({
         request.destination === "image",
       handler: "CacheFirst",
       options: {
-        cacheName: "aeromint-static-assets",
+        cacheName: "flyahead-static-assets",
         expiration: {
           maxEntries: 120,
           maxAgeSeconds: 60 * 60 * 24 * 30
@@ -25,14 +25,14 @@ const withPWA = withPWAInit({
       urlPattern: ({ url }) => url.pathname.startsWith("/api/flights/search") || url.pathname.startsWith("/flights"),
       handler: "StaleWhileRevalidate",
       options: {
-        cacheName: "aeromint-flight-search"
+        cacheName: "flyahead-flight-search"
       }
     },
     {
       urlPattern: ({ url }) => url.pathname.startsWith("/my-bookings"),
       handler: "NetworkFirst",
       options: {
-        cacheName: "aeromint-my-bookings",
+        cacheName: "flyahead-my-bookings",
         networkTimeoutSeconds: 5
       }
     }

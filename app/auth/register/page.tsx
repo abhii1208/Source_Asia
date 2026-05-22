@@ -93,7 +93,7 @@ export default function RegisterPage() {
     <section className="min-h-[calc(100vh-220px)] flex items-center justify-center px-gutter py-12">
       <form onSubmit={submitRegister} className="glass-panel rounded-2xl p-8 w-full max-w-md shadow-glass">
         <h1 className="font-headline-lg text-headline-lg text-on-surface">Create Account</h1>
-        <p className="text-on-surface-variant mt-2">Set up your AeroMint profile to book and manage flights.</p>
+        <p className="text-on-surface-variant mt-2">Set up your FlyAhead profile to book and manage flights.</p>
 
         <label className="block mt-6">
           <span className="font-label-caps text-label-caps text-on-surface-variant">Full Name</span>
