@@ -1,0 +1,190 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import FlightFilters, { type FlightFilterState } from "@/components/flight/FlightFilters";
+import FlightResultsList from "@/components/flight/FlightResultsList";
+import type { AirportCode, CabinClass, Flight, FlightFallbackReason, FlightDataSource } from "@/lib/types";
+import { useFlightStore } from "@/store/useFlightStore";
+
+type FlightsPageClientProps = {
+  initialFlights: Flight[];
+  origin: string;
+  destination: string;
+  date: string;
+  passengers: number;
+  cabinClass: CabinClass;
+  source: FlightDataSource;
+  fallbackReason?: FlightFallbackReason;
+};
+
+const initialFilters: FlightFilterState = {
+  maxPrice: 30000,
+  time: "all",
+  cabinClass: "all",
+  status: ["scheduled", "boarding", "delayed", "departed", "landed", "cancelled"]
+};
+
+const knownAirports: AirportCode[] = ["BLR", "DEL", "BOM", "HYD", "MAA", "CCU", "GOI"];
+
+function toAirportCode(value: string, fallback: AirportCode): AirportCode {
+  const upper = value.trim().toUpperCase();
+  if (knownAirports.includes(upper as AirportCode)) {
+    return upper as AirportCode;
+  }
+  return fallback;
+}
+
+function departureHour(iso: string): number {
+  return new Date(iso).getHours();
+}
+
+function fallbackMessage(reason?: FlightFallbackReason): string {
+  if (reason === "missing_env") {
+    return "Live Supabase configuration is missing, so we are showing curated upcoming flights to keep your booking flow active.";
+  }
+  if (reason === "no_results") {
+    return "No live flights matched this search right now, so we are showing curated upcoming flights for similar routes.";
+  }
+  return "We could not reach live Supabase flight data at this moment, so we're showing curated upcoming flights. You can still explore routes and continue the booking flow.";
+}
+
+export default function FlightsPageClient({
+  initialFlights,
+  origin,
+  destination,
+  date,
+  passengers,
+  cabinClass,
+  source,
+  fallbackReason
+}: FlightsPageClientProps) {
+  const router = useRouter();
+  const [filters, setFilters] = useState<FlightFilterState>(initialFilters);
+  const [loading, setLoading] = useState(true);
+  const [sortAsc, setSortAsc] = useState(true);
+  const setSelectedFlight = useFlightStore((state) => state.setSelectedFlight);
+  const setCurrentBookingStep = useFlightStore((state) => state.setCurrentBookingStep);
+  const setSearchQuery = useFlightStore((state) => state.setSearchQuery);
+  const isFallback = source === "fallback";
+
+  useEffect(() => {
+    setSearchQuery({
+      origin: toAirportCode(origin, "BLR"),
+      destination: toAirportCode(destination, "DEL"),
+      date,
+      passengerCount: passengers,
+      cabinClass
+    });
+  }, [cabinClass, date, destination, origin, passengers, setSearchQuery]);
+
+  const filteredFlights = useMemo(() => {
+    let rows: Flight[] = [...initialFlights];
+
+    rows = rows.filter((flight) => {
+      const hour = departureHour(flight.departsAt);
+      if (filters.time === "morning") {
+        return hour >= 6 && hour < 12;
+      }
+      if (filters.time === "afternoon") {
+        return hour >= 12 && hour < 18;
+      }
+      if (filters.time === "evening") {
+        return hour >= 18 && hour <= 23;
+      }
+      return true;
+    });
+
+    rows = rows.filter((flight) => filters.status.includes(flight.status));
+
+    rows = rows.filter((flight) => {
+      if (filters.cabinClass === "all") {
+        return flight.basePrice <= filters.maxPrice;
+      }
+      return flight.classPrices[filters.cabinClass] <= filters.maxPrice;
+    });
+
+    rows = [...rows].sort((a, b) => {
+      const priceA = filters.cabinClass === "all" ? a.classPrices[cabinClass] : a.classPrices[filters.cabinClass];
+      const priceB = filters.cabinClass === "all" ? b.classPrices[cabinClass] : b.classPrices[filters.cabinClass];
+      return sortAsc ? priceA - priceB : priceB - priceA;
+    });
+
+    return rows;
+  }, [initialFlights, filters, sortAsc, cabinClass]);
+
+  useEffect(() => {
+    setLoading(true);
+    const timer = window.setTimeout(() => setLoading(false), 320);
+    return () => window.clearTimeout(timer);
+  }, [filters, origin, destination, sortAsc, initialFlights]);
+
+  function handleSelect(flight: Flight, selectedClass: CabinClass) {
+    setSelectedFlight(flight, selectedClass);
+    setCurrentBookingStep("passenger");
+    router.push("/booking/passenger");
+  }
+
+  function retryLiveSearch() {
+    router.refresh();
+  }
+
+  return (
+    <section className="max-w-[1600px] mx-auto px-gutter py-8 md:py-12">
+      <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
+        <FlightFilters value={filters} onChange={setFilters} onClear={() => setFilters(initialFilters)} />
+
+        <div>
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+            <div>
+              <h1 className="font-headline-xl text-[52px] leading-tight text-on-background">
+                {origin} to {destination}
+              </h1>
+              <p className="font-body-lg text-body-lg text-on-surface-variant mt-1">
+                {date || "Upcoming"} | {passengers} Passenger{passengers > 1 ? "s" : ""} | {cabinClass}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSortAsc((current) => !current)}
+              className="rounded-xl border border-primary text-primary px-6 py-3 hover:bg-primary hover:text-on-primary transition-colors focus-ring"
+            >
+              Sort by Price ({sortAsc ? "Low to High" : "High to Low"})
+            </button>
+          </div>
+
+          {isFallback ? (
+            <div className="mb-5 rounded-2xl border border-primary/30 bg-primary-container/10 p-4 md:p-5">
+              <h2 className="font-headline-md text-headline-md text-primary">Showing popular flights for now</h2>
+              <p className="mt-2 text-sm text-on-surface">{fallbackMessage(fallbackReason)}</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={retryLiveSearch}
+                  className="rounded-xl bg-primary text-on-primary px-4 py-2 hover:bg-primary-container hover:text-on-primary-container transition-colors focus-ring"
+                >
+                  Retry live search
+                </button>
+                <Link
+                  href="/search"
+                  className="rounded-xl border border-primary text-primary px-4 py-2 hover:bg-primary hover:text-on-primary transition-colors focus-ring"
+                >
+                  View popular routes
+                </Link>
+              </div>
+              {process.env.NODE_ENV !== "production" ? (
+                <p className="mt-3 text-xs text-on-surface-variant">
+                  Dev hint: Check NEXT_PUBLIC_SUPABASE_URL, anon key, migrations, RLS policy, and flights seed data.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          <FlightResultsList loading={loading} flights={filteredFlights} onSelect={handleSelect} />
+        </div>
+      </div>
+    </section>
+  );
+}

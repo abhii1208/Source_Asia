@@ -1,0 +1,127 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background-color: theme("colors.surface");
+  color: theme("colors.on-surface");
+  font-family: "Inter", sans-serif;
+}
+
+body {
+  min-height: max(884px, 100dvh);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 500,
+    "GRAD" 0,
+    "opsz" 24;
+}
+
+.glass-panel {
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+}
+
+.hero-gradient {
+  background: linear-gradient(135deg, #bdd3d1 0%, #8cded2 100%);
+}
+
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #dce7e4;
+  border-radius: 999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #9fb6b2;
+  border-radius: 999px;
+}
+
+.seat-grid {
+  scrollbar-width: thin;
+  scrollbar-color: #9fb6b2 #dce7e4;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floating {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.42s ease-out both;
+}
+
+.float-card {
+  animation: floating 6.5s ease-in-out infinite;
+}
+
+.seat-chip-pulse {
+  animation: soft-pulse 2.4s ease-in-out infinite;
+}
+
+.glow-search {
+  box-shadow: 0 0 0 1px rgba(20, 184, 166, 0.14), 0 24px 50px -30px rgba(20, 184, 166, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .float-card,
+  .seat-chip-pulse {
+    animation: none !important;
+  }
+}
