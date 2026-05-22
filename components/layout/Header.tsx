@@ -14,32 +14,34 @@ type NavItem = {
   isActive: (pathname: string) => boolean;
 };
 
-const navItems: NavItem[] = [
-  {
-    href: "/search",
-    label: "Search",
-    isActive: (pathname) =>
-      pathname === "/" ||
-      pathname === "/search" ||
-      pathname.startsWith("/flights") ||
-      pathname.startsWith("/booking")
-  },
-  {
-    href: "/my-bookings",
-    label: "Trips",
-    isActive: (pathname) => pathname.startsWith("/my-bookings")
-  },
-  {
-    href: "/auth/login",
-    label: "Profile",
-    isActive: (pathname) => pathname.startsWith("/auth")
-  },
-  {
-    href: "/offline",
-    label: "Help",
-    isActive: (pathname) => pathname.startsWith("/offline")
-  }
-];
+function getNavItems(isAuthenticated: boolean): NavItem[] {
+  return [
+    {
+      href: "/search",
+      label: "Search",
+      isActive: (pathname) =>
+        pathname === "/" ||
+        pathname === "/search" ||
+        pathname.startsWith("/flights") ||
+        pathname.startsWith("/booking")
+    },
+    {
+      href: "/my-bookings",
+      label: "Trips",
+      isActive: (pathname) => pathname.startsWith("/my-bookings")
+    },
+    {
+      href: isAuthenticated ? "/my-bookings" : "/auth/login",
+      label: "Profile",
+      isActive: (pathname) => (isAuthenticated ? pathname.startsWith("/my-bookings") : pathname.startsWith("/auth"))
+    },
+    {
+      href: "/offline",
+      label: "Help",
+      isActive: (pathname) => pathname.startsWith("/offline")
+    }
+  ];
+}
 
 export default function Header() {
   const pathname = usePathname();
@@ -48,6 +50,7 @@ export default function Header() {
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const navItems = useMemo(() => getNavItems(isLoadingUser || Boolean(userEmail)), [isLoadingUser, userEmail]);
   const profileInitials = useMemo(() => {
     if (!userEmail) {
       return "FA";
@@ -128,6 +131,7 @@ export default function Header() {
     resetUserStore();
     setUserEmail(null);
     setIsSigningOut(false);
+    router.refresh();
     router.replace("/auth/login");
   }
 
@@ -161,7 +165,14 @@ export default function Header() {
           })}
         </nav>
 
-        {userEmail ? (
+        {isLoadingUser ? (
+          <span
+            aria-label="Checking session"
+            className="inline-flex h-10 w-24 items-center justify-center rounded-xl border border-outline-variant/40 bg-surface-container-low text-on-surface-variant"
+          >
+            ...
+          </span>
+        ) : userEmail ? (
           <div className="flex items-center gap-3">
             <div
               aria-label="User account"
@@ -195,7 +206,7 @@ export default function Header() {
             aria-label="Open login page"
             className="rounded-xl border border-primary text-primary px-4 py-2 hover:bg-primary hover:text-on-primary transition-colors focus-ring"
           >
-            {isLoadingUser ? "..." : "Login"}
+            Login
           </Link>
         )}
       </div>

@@ -1,18 +1,81 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createSupabaseBrowserClient, getSupabaseBrowserClientError } from "@/lib/supabase/client";
 import { isValidEmail } from "@/lib/validators";
 import { setSession } from "@/store/useUserStore";
 
 export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <section className="min-h-[calc(100vh-220px)] flex items-center justify-center px-gutter py-12">
+          <div className="glass-panel rounded-2xl p-8 w-full max-w-md shadow-glass">
+            <p className="text-on-surface-variant">Loading login...</p>
+          </div>
+        </section>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  useEffect(() => {
+    const envError = getSupabaseBrowserClientError();
+    if (envError) {
+      setIsCheckingSession(false);
+      return;
+    }
+
+    const supabase = createSupabaseBrowserClient();
+    if (!supabase) {
+      setIsCheckingSession(false);
+      return;
+    }
+
+    let mounted = true;
+
+    void supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) {
+        return;
+      }
+
+      if (data.user) {
+        const redirectTo = searchParams.get("redirect");
+        router.replace(redirectTo && redirectTo.startsWith("/") ? redirectTo : "/search");
+        return;
+      }
+
+      setIsCheckingSession(false);
+    });
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        return;
+      }
+      const redirectTo = searchParams.get("redirect");
+      router.replace(redirectTo && redirectTo.startsWith("/") ? redirectTo : "/search");
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router, searchParams]);
 
   function mapLoginError(message: string): string {
     if (message.toLowerCase().includes("invalid login credentials")) {
@@ -26,6 +89,9 @@ export default function LoginPage() {
 
   async function submitLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isCheckingSession) {
+      return;
+    }
 
     if (!isValidEmail(email) || password.length < 6) {
       setError("Enter a valid email and password (min 6 characters).");
@@ -69,6 +135,16 @@ export default function LoginPage() {
 
     router.replace(redirectTo);
     setIsSubmitting(false);
+  }
+
+  if (isCheckingSession) {
+    return (
+      <section className="min-h-[calc(100vh-220px)] flex items-center justify-center px-gutter py-12">
+        <div className="glass-panel rounded-2xl p-8 w-full max-w-md shadow-glass">
+          <p className="text-on-surface-variant">Checking your session...</p>
+        </div>
+      </section>
+    );
   }
 
   return (

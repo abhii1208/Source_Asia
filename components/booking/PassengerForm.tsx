@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Traveler } from "@/lib/types";
+import { isFutureDate } from "@/lib/validators";
 
 type PassengerFormProps = {
   initialValue?: Traveler;
@@ -35,6 +36,8 @@ export default function PassengerForm({ initialValue, onSubmit }: PassengerFormP
     }
     if (!value.dateOfBirth) {
       nextErrors.dateOfBirth = "Date of birth is required.";
+    } else if (isFutureDate(value.dateOfBirth)) {
+      nextErrors.dateOfBirth = "Date of birth cannot be in the future.";
     }
 
     setErrors(nextErrors);

@@ -6,14 +6,24 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { indianAirports } from "@/lib/mock-data";
 import type { CabinClass } from "@/lib/types";
+import { getTodayDateInputValue, isTodayOrFutureDate } from "@/lib/validators";
 
 type SearchErrors = {
   route?: string;
   date?: string;
 };
 
-const initialDate = "2026-10-15";
-const initialReturn = "2026-10-20";
+function addDaysToDateInput(dateInput: string, days: number): string {
+  const baseDate = new Date(`${dateInput}T00:00:00`);
+  if (Number.isNaN(baseDate.getTime())) {
+    return dateInput;
+  }
+  baseDate.setDate(baseDate.getDate() + days);
+  const year = baseDate.getFullYear();
+  const month = String(baseDate.getMonth() + 1).padStart(2, "0");
+  const day = String(baseDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 const trustChips = ["Realtime seats", "Secure booking", "Easy reschedule", "PWA ready"];
 const popularToday = [
@@ -24,15 +34,27 @@ const popularToday = [
 
 export default function HeroSearch() {
   const router = useRouter();
+  const todayDate = useMemo(() => getTodayDateInputValue(), []);
   const [origin, setOrigin] = useState("BLR");
   const [destination, setDestination] = useState("DEL");
-  const [departDate, setDepartDate] = useState(initialDate);
-  const [returnDate, setReturnDate] = useState(initialReturn);
+  const [departDate, setDepartDate] = useState(() => getTodayDateInputValue());
+  const [returnDate, setReturnDate] = useState(() => addDaysToDateInput(getTodayDateInputValue(), 5));
   const [passengers, setPassengers] = useState(1);
   const [cabinClass, setCabinClass] = useState<CabinClass>("economy");
   const [errors, setErrors] = useState<SearchErrors>({});
 
-  const canSearch = useMemo(() => origin !== destination && Boolean(departDate), [origin, destination, departDate]);
+  const canSearch = useMemo(() => {
+    if (origin === destination) {
+      return false;
+    }
+    if (!departDate || !isTodayOrFutureDate(departDate)) {
+      return false;
+    }
+    if (returnDate && (!isTodayOrFutureDate(returnDate) || returnDate < departDate)) {
+      return false;
+    }
+    return true;
+  }, [origin, destination, departDate, returnDate]);
 
   function swapRoute() {
     setOrigin(destination);
@@ -46,6 +68,12 @@ export default function HeroSearch() {
     }
     if (!departDate) {
       nextErrors.date = "Please choose a departure date.";
+    } else if (!isTodayOrFutureDate(departDate)) {
+      nextErrors.date = "Departure date cannot be in the past.";
+    } else if (returnDate && !isTodayOrFutureDate(returnDate)) {
+      nextErrors.date = "Return date cannot be in the past.";
+    } else if (returnDate && returnDate < departDate) {
+      nextErrors.date = "Return date cannot be before departure date.";
     }
 
     setErrors(nextErrors);
@@ -172,6 +200,7 @@ export default function HeroSearch() {
                     type="date"
                     value={departDate}
                     onChange={(event) => setDepartDate(event.target.value)}
+                    min={todayDate}
                     className="w-full bg-transparent border-none focus:ring-0 p-0 font-body-md text-on-surface"
                     aria-label="Departure date"
                   />
@@ -182,6 +211,7 @@ export default function HeroSearch() {
                     type="date"
                     value={returnDate}
                     onChange={(event) => setReturnDate(event.target.value)}
+                    min={departDate || todayDate}
                     className="w-full bg-transparent border-none focus:ring-0 p-0 font-body-md text-on-surface"
                     aria-label="Return date"
                   />

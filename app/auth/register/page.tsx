@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient, getSupabaseBrowserClientError } from "@/lib/supabase/client";
 import { isValidEmail } from "@/lib/validators";
@@ -16,6 +16,48 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  useEffect(() => {
+    const envError = getSupabaseBrowserClientError();
+    if (envError) {
+      setIsCheckingSession(false);
+      return;
+    }
+
+    const supabase = createSupabaseBrowserClient();
+    if (!supabase) {
+      setIsCheckingSession(false);
+      return;
+    }
+
+    let mounted = true;
+
+    void supabase.auth.getUser().then(({ data }) => {
+      if (!mounted) {
+        return;
+      }
+      if (data.user) {
+        router.replace("/search");
+        return;
+      }
+      setIsCheckingSession(false);
+    });
+
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.user) {
+        return;
+      }
+      router.replace("/search");
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router]);
 
   function mapSignupError(message: string): string {
     if (message.toLowerCase().includes("already registered")) {
@@ -29,6 +71,9 @@ export default function RegisterPage() {
 
   async function submitRegister(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (isCheckingSession) {
+      return;
+    }
     if (name.trim().length < 2) {
       setError("Please enter your full name.");
       return;
@@ -87,6 +132,16 @@ export default function RegisterPage() {
 
     setSuccessMessage("Account created. Please check your email to confirm your account.");
     setIsSubmitting(false);
+  }
+
+  if (isCheckingSession) {
+    return (
+      <section className="min-h-[calc(100vh-220px)] flex items-center justify-center px-gutter py-12">
+        <div className="glass-panel rounded-2xl p-8 w-full max-w-md shadow-glass">
+          <p className="text-on-surface-variant">Checking your session...</p>
+        </div>
+      </section>
+    );
   }
 
   return (

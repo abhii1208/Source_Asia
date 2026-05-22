@@ -3,7 +3,7 @@ import Link from "next/link";
 const footerLinks = [
   { href: "/search", label: "Search Flights" },
   { href: "/my-bookings", label: "My Bookings" },
-  { href: "/auth/login", label: "Login" },
+  { href: "/my-bookings", label: "Account" },
   { href: "/offline", label: "Offline Help" }
 ];
 

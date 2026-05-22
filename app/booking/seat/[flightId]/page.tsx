@@ -121,6 +121,18 @@ function SeatSelectionPageContent() {
 
       const mappedSeats = mapSupabaseSeatRows(data as SupabaseSeatRow[]);
       const availableCount = mappedSeats.filter((seat) => seat.state === "available").length;
+      const latestSelectedSeat = useFlightStore.getState().selectedSeat;
+      if (latestSelectedSeat) {
+        const selectedSeatStillAvailable = mappedSeats.some(
+          (seat) => seat.id === latestSelectedSeat && seat.state === "available"
+        );
+
+        if (!selectedSeatStillAvailable) {
+          setSelectedSeat(null);
+          setBookingError("Your selected seat just became unavailable. Please choose another seat.");
+        }
+      }
+
       setDemoMode(false);
       setFlight({
         ...activeFlight,
@@ -154,7 +166,7 @@ function SeatSelectionPageContent() {
       isMounted = false;
       void client.removeChannel(channel);
     };
-  }, [flightId, selectedFlight]);
+  }, [flightId, selectedFlight, setSelectedSeat]);
 
   const safeFlight = useMemo(() => {
     if (!flight) {

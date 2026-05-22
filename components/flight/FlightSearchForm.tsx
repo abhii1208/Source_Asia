@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cabinClassLabels, indianAirports } from "@/lib/mock-data";
 import type { CabinClass, SearchQuery } from "@/lib/types";
+import { getTodayDateInputValue, isTodayOrFutureDate } from "@/lib/validators";
 import { useFlightStore } from "@/store/useFlightStore";
 
 type FlightSearchFormProps = {
@@ -11,10 +12,9 @@ type FlightSearchFormProps = {
   recentSearches?: Array<{ origin: SearchQuery["origin"]; destination: SearchQuery["destination"] }>;
 };
 
-const defaults: SearchQuery = {
+const defaults: Omit<SearchQuery, "date"> & { date?: string } = {
   origin: "BLR",
   destination: "DEL",
-  date: "2026-10-15",
   passengerCount: 1,
   cabinClass: "economy"
 };
@@ -23,14 +23,23 @@ export default function FlightSearchForm({ initialState, recentSearches = [] }: 
   const router = useRouter();
   const setSearch = useFlightStore((state) => state.setSearch);
   const setSearchQuery = useFlightStore((state) => state.setSearchQuery);
-  const [form, setForm] = useState<SearchQuery>({ ...defaults, ...initialState });
+  const [form, setForm] = useState<SearchQuery>(() => ({
+    ...defaults,
+    date: getTodayDateInputValue(),
+    ...initialState
+  }));
   const [returnDate, setReturnDate] = useState("");
   const [error, setError] = useState("");
+  const todayDate = useMemo(() => getTodayDateInputValue(), []);
 
-  const valid = useMemo(
-    () => Boolean(form.date) && form.origin !== form.destination && form.passengerCount > 0,
-    [form]
-  );
+  const valid = useMemo(() => {
+    const hasValidRoute = form.origin !== form.destination;
+    const hasValidPassengers = form.passengerCount > 0;
+    const hasValidDeparture = Boolean(form.date) && isTodayOrFutureDate(form.date);
+    const hasValidReturn = !returnDate || (isTodayOrFutureDate(returnDate) && returnDate >= form.date);
+
+    return hasValidRoute && hasValidPassengers && hasValidDeparture && hasValidReturn;
+  }, [form, returnDate]);
 
   function updateField<K extends keyof SearchQuery>(field: K, value: SearchQuery[K]) {
     setForm((current) => ({
@@ -40,8 +49,28 @@ export default function FlightSearchForm({ initialState, recentSearches = [] }: 
   }
 
   function runSearch() {
-    if (!valid) {
-      setError("Please pick a valid route and departure date.");
+    if (form.origin === form.destination) {
+      setError("Origin and destination must be different.");
+      return;
+    }
+
+    if (!form.date) {
+      setError("Please choose a departure date.");
+      return;
+    }
+
+    if (!isTodayOrFutureDate(form.date)) {
+      setError("Departure date cannot be in the past.");
+      return;
+    }
+
+    if (returnDate && !isTodayOrFutureDate(returnDate)) {
+      setError("Return date cannot be in the past.");
+      return;
+    }
+
+    if (returnDate && returnDate < form.date) {
+      setError("Return date cannot be before departure date.");
       return;
     }
     setError("");
@@ -129,6 +158,7 @@ export default function FlightSearchForm({ initialState, recentSearches = [] }: 
               type="date"
               value={form.date}
               onChange={(event) => updateField("date", event.target.value)}
+              min={todayDate}
               className="w-full bg-transparent border-none focus:ring-0 p-0 font-body-md text-on-surface"
             />
           </div>
@@ -145,6 +175,7 @@ export default function FlightSearchForm({ initialState, recentSearches = [] }: 
               type="date"
               value={returnDate}
               onChange={(event) => setReturnDate(event.target.value)}
+              min={form.date || todayDate}
               className="w-full bg-transparent border-none focus:ring-0 p-0 font-body-md text-on-surface"
             />
           </div>
@@ -153,7 +184,8 @@ export default function FlightSearchForm({ initialState, recentSearches = [] }: 
         <button
           type="button"
           onClick={runSearch}
-          className="min-h-[72px] h-full mt-auto bg-primary text-on-primary font-headline-md text-headline-md px-8 rounded-xl hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-md flex items-center justify-center gap-2 focus-ring"
+          disabled={!valid}
+          className="min-h-[72px] h-full mt-auto bg-primary text-on-primary font-headline-md text-headline-md px-8 rounded-xl hover:bg-primary-container hover:text-on-primary-container transition-colors shadow-md flex items-center justify-center gap-2 disabled:opacity-60 focus-ring"
         >
           <span className="material-symbols-outlined">search</span>
           Search Flights
