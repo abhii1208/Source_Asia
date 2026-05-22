@@ -2,6 +2,7 @@ import type { SeatClass, SeatDefinition } from "@/lib/types";
 
 export type SupabaseSeatRow = {
   id: string;
+  flight_id: string;
   seat_number: string;
   class: string;
   is_available: boolean;
@@ -55,6 +56,7 @@ export function mapSupabaseSeatRows(rows: SupabaseSeatRow[]): SeatDefinition[] {
       return {
         id: row.seat_number,
         seatUuid: row.id,
+        flight_id: row.flight_id,
         row: parsed.row,
         column: parsed.column,
         cabin,

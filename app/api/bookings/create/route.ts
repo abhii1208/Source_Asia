@@ -6,6 +6,7 @@ import { sendTicketEmail } from "@/lib/email/send-ticket-email";
 import type { BookingCreateInput, PassengerInput } from "@/lib/types";
 
 const passportPattern = /^[A-Z0-9]{6,16}$/i;
+const postgresUuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const passengerSchema = z
   .object({
@@ -26,8 +27,8 @@ const passengerSchema = z
   });
 
 const createBookingSchema = z.object({
-  flight_id: z.string().uuid(),
-  seat_id: z.string().uuid(),
+  flight_id: z.string().trim().regex(postgresUuidPattern),
+  seat_id: z.string().trim().regex(postgresUuidPattern),
   passengers: z.array(passengerSchema).min(1),
   total_price: z.number().finite().positive()
 });

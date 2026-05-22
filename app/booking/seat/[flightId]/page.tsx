@@ -100,7 +100,7 @@ function SeatSelectionPageContent() {
     async function loadSeats() {
       const { data, error } = await client
         .from("seats")
-        .select("id, seat_number, class, is_available, extra_fee")
+        .select("id, flight_id, seat_number, class, is_available, extra_fee")
         .eq("flight_id", activeFlight.id)
         .order("seat_number", { ascending: true });
 
@@ -204,6 +204,7 @@ function SeatSelectionPageContent() {
 
     const selectedSeatDefinition = safeFlight.seats.find((item) => item.id === seat) ?? null;
     const seatUuid = selectedSeatDefinition?.seatUuid ?? (isUuid(seat) ? seat : null);
+    const bookingFlightId = selectedSeatDefinition?.flight_id ?? safeFlight.id;
 
     if (!seatUuid) {
       setSelectedSeat(null);
@@ -235,7 +236,7 @@ function SeatSelectionPageContent() {
           "content-type": "application/json"
         },
         body: JSON.stringify({
-          flight_id: safeFlight.id,
+          flight_id: bookingFlightId,
           seat_id: seatUuid,
           total_price: totalPrice,
           passengers: [
