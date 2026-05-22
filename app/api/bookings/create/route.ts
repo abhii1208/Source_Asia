@@ -35,6 +35,10 @@ const createBookingSchema = z.object({
 type ParsedBookingInput = z.infer<typeof createBookingSchema>;
 type NormalizedPassengerInput = Omit<PassengerInput, "passport_no"> & { passport_no: string | null };
 type NormalizedBookingInput = Omit<BookingCreateInput, "passengers"> & { passengers: NormalizedPassengerInput[] };
+type RpcResponse = {
+  bookingId: string | null;
+  errorMessage: string | null;
+};
 
 function generatePnrCode(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -67,8 +71,16 @@ function mapValidationError(error: z.ZodError<ParsedBookingInput>): string {
     const firstSegment = path[0];
     const passengerField = path[2];
 
+    if (firstSegment === "flight_id") {
+      return "Selected flight is invalid. Please choose a flight again.";
+    }
+
     if (firstSegment === "seat_id") {
       return "Please select a seat before confirming.";
+    }
+
+    if (firstSegment === "total_price") {
+      return "Unable to confirm this fare. Please refresh and try again.";
     }
 
     if (firstSegment === "passengers" && (passengerField === "full_name" || passengerField === "nationality" || passengerField === "dob")) {
@@ -80,7 +92,49 @@ function mapValidationError(error: z.ZodError<ParsedBookingInput>): string {
     }
   }
 
-  return "Please complete required passenger details.";
+  return "Unable to confirm ticket right now. Please try again.";
+}
+
+function shouldRetryWithFallbackPassport(errorMessage: string, passengers: NormalizedPassengerInput[]): boolean {
+  const lowerMessage = errorMessage.toLowerCase();
+  const hasMissingPassport = passengers.some((passenger) => !passenger.passport_no);
+
+  if (!hasMissingPassport) {
+    return false;
+  }
+
+  return (
+    (lowerMessage.includes("passport_no") || lowerMessage.includes("passport")) &&
+    (lowerMessage.includes("null value") || lowerMessage.includes("not-null"))
+  );
+}
+
+function fallbackPassport(index: number): string {
+  const randomChunk = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `FA${randomChunk}${index}`;
+}
+
+async function reserveBooking(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  payload: NormalizedBookingInput,
+  pnrCode: string
+): Promise<RpcResponse> {
+  if (!supabase) {
+    return { bookingId: null, errorMessage: "Supabase client unavailable" };
+  }
+
+  const { data, error } = await supabase.rpc("reserve_seat_and_create_booking", {
+    p_flight_id: payload.flight_id,
+    p_seat_id: payload.seat_id,
+    p_total_price: payload.total_price,
+    p_pnr_code: pnrCode,
+    p_passengers: payload.passengers
+  });
+
+  return {
+    bookingId: typeof data === "string" ? data : null,
+    errorMessage: error?.message ?? null
+  };
 }
 
 export async function POST(request: Request) {
@@ -134,16 +188,25 @@ export async function POST(request: Request) {
   const payload = normalizePayload(parsed.data);
   const pnrCode = generatePnrCode();
 
-  const { data: rpcResult, error: rpcError } = await supabase.rpc("reserve_seat_and_create_booking", {
-    p_flight_id: payload.flight_id,
-    p_seat_id: payload.seat_id,
-    p_total_price: payload.total_price,
-    p_pnr_code: pnrCode,
-    p_passengers: payload.passengers
-  });
+  let rpcResponse = await reserveBooking(supabase, payload, pnrCode);
 
-  if (rpcError) {
-    const lowerMessage = rpcError.message.toLowerCase();
+  if (
+    rpcResponse.errorMessage &&
+    shouldRetryWithFallbackPassport(rpcResponse.errorMessage, payload.passengers)
+  ) {
+    const retryPayload: NormalizedBookingInput = {
+      ...payload,
+      passengers: payload.passengers.map((passenger, index) => ({
+        ...passenger,
+        passport_no: passenger.passport_no ?? fallbackPassport(index)
+      }))
+    };
+
+    rpcResponse = await reserveBooking(supabase, retryPayload, pnrCode);
+  }
+
+  if (rpcResponse.errorMessage) {
+    const lowerMessage = rpcResponse.errorMessage.toLowerCase();
 
     if (lowerMessage.includes("authentication required")) {
       return NextResponse.json(
@@ -190,6 +253,17 @@ export async function POST(request: Request) {
       );
     }
 
+    if (lowerMessage.includes("passport_no") || lowerMessage.includes("passport")) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Passport validation failed in the database. Please refresh and try again. If it continues, run the latest Supabase migrations."
+        },
+        { status: 422 }
+      );
+    }
+
     return NextResponse.json(
       {
         success: false,
@@ -199,7 +273,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const bookingId = typeof rpcResult === "string" ? rpcResult : null;
+  const bookingId = rpcResponse.bookingId;
   if (!bookingId) {
     return NextResponse.json(
       {

@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
 import MobileBottomNav from "@/components/layout/MobileBottomNav";
-import InstallPrompt from "@/components/pwa/InstallPrompt";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,7 +34,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="antialiased min-h-screen flex flex-col pt-[72px] pb-[64px] md:pb-0">
         <Header />
         <main className="flex-1 bg-[#d6e2de]">{children}</main>
-        <InstallPrompt />
         <Footer />
         <MobileBottomNav />
       </body>
