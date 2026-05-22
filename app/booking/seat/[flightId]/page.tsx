@@ -7,7 +7,6 @@ import BookingSummary from "@/components/booking/BookingSummary";
 import SeatMap from "@/components/seats/SeatMap";
 import EmptyState from "@/components/ui/EmptyState";
 import LoadingSkeleton from "@/components/ui/LoadingSkeleton";
-import { findFlightById } from "@/lib/mock-data";
 import { buildPopularFlights } from "@/lib/popular-flights";
 import { createSupabaseBrowserClient, getSupabaseBrowserClientError } from "@/lib/supabase/client";
 import { buildDemoSeatDefinitions, mapSupabaseSeatRows, type SupabaseSeatRow } from "@/lib/seats/seat-map";
@@ -19,10 +18,7 @@ import { useUserStore } from "@/store/useUserStore";
 function findFallbackFlight(flightId: string): Flight | null {
   const popular = buildPopularFlights({});
   const fromPopular = popular.find((flight) => flight.id === flightId);
-  if (fromPopular) {
-    return fromPopular;
-  }
-  return findFlightById(flightId) ?? null;
+  return fromPopular ?? null;
 }
 
 export default function SeatSelectionPage() {
@@ -57,7 +53,8 @@ function SeatSelectionPageContent() {
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
 
   useEffect(() => {
-    const fallback = selectedFlight?.id === flightId ? selectedFlight : findFallbackFlight(flightId);
+    const fallback =
+      selectedFlight?.id === flightId && isUuid(selectedFlight.id) ? selectedFlight : findFallbackFlight(flightId);
     if (!fallback) {
       setFlight(null);
       setLoadingSeats(false);
@@ -311,8 +308,8 @@ function SeatSelectionPageContent() {
     return (
       <section className="max-w-[1600px] mx-auto px-gutter py-12">
         <EmptyState
-          title="No flight selected"
-          description="Select a flight first to continue seat selection."
+          title="Please select a valid flight"
+          description="Your saved flight selection is outdated. Choose a flight again to continue booking."
           actionHref="/flights"
           actionLabel="Back to Flights"
         />

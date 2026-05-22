@@ -6,9 +6,9 @@ import BookingStepper from "@/components/booking/BookingStepper";
 import BookingSummary from "@/components/booking/BookingSummary";
 import PassengerForm from "@/components/booking/PassengerForm";
 import EmptyState from "@/components/ui/EmptyState";
-import { findFlightById } from "@/lib/mock-data";
 import { buildPopularFlights } from "@/lib/popular-flights";
 import type { Traveler } from "@/lib/types";
+import { isUuid } from "@/lib/booking-data";
 import { useFlightStore } from "@/store/useFlightStore";
 
 export default function PassengerPage() {
@@ -29,12 +29,12 @@ function PassengerPageContent() {
   const passengerFormData = useFlightStore((state) => state.passengerFormData);
 
   const flight = useMemo(() => {
-    if (selectedFlight) {
+    if (selectedFlight && isUuid(selectedFlight.id)) {
       return selectedFlight;
     }
     const fallbackFlightId = searchParams.get("flightId") ?? "";
     const popularFlight = buildPopularFlights({}).find((item) => item.id === fallbackFlightId);
-    return popularFlight ?? findFlightById(fallbackFlightId);
+    return popularFlight ?? null;
   }, [searchParams, selectedFlight]);
 
   function handleSubmit(traveler: Traveler) {
@@ -61,10 +61,10 @@ function PassengerPageContent() {
     return (
       <section className="max-w-[1600px] mx-auto px-gutter py-12">
         <EmptyState
-          title="No flight selected"
-          description="Choose a flight first so we can capture passenger details."
-          actionHref="/search"
-          actionLabel="Back to Search"
+          title="Please select a valid flight"
+          description="Your saved flight selection is outdated. Choose a flight again to continue booking."
+          actionHref="/flights"
+          actionLabel="Back to Flights"
         />
       </section>
     );
