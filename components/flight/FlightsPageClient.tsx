@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import DestinationImage from "@/components/flight/DestinationImage";
 import FlightFilters, { type FlightFilterState } from "@/components/flight/FlightFilters";
 import FlightResultsList from "@/components/flight/FlightResultsList";
+import { getDestinationImage } from "@/lib/destination-images";
 import type { AirportCode, CabinClass, Flight, FlightFallbackReason, FlightDataSource } from "@/lib/types";
 import { useFlightStore } from "@/store/useFlightStore";
 
@@ -68,6 +70,8 @@ export default function FlightsPageClient({
   const setCurrentBookingStep = useFlightStore((state) => state.setCurrentBookingStep);
   const setSearchQuery = useFlightStore((state) => state.setSearchQuery);
   const isFallback = source === "fallback";
+  const originMeta = getDestinationImage(toAirportCode(origin, "BLR"));
+  const destinationMeta = getDestinationImage(toAirportCode(destination, "DEL"));
 
   useEffect(() => {
     setSearchQuery({
@@ -136,11 +140,34 @@ export default function FlightsPageClient({
         <FlightFilters value={filters} onChange={setFilters} onClear={() => setFilters(initialFilters)} />
 
         <div>
+          <div className="mb-4 overflow-hidden rounded-2xl border border-white/35 bg-white/60 shadow-soft">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_280px]">
+              <div className="p-5 md:p-6">
+                <h1 className="font-headline-xl text-[44px] leading-tight text-on-background">
+                  {origin} to {destination}
+                </h1>
+                <p className="font-body-lg text-body-lg text-on-surface-variant mt-2">
+                  {originMeta.cityName} to {destinationMeta.cityName} | {date || "Upcoming"} | {passengers} Passenger
+                  {passengers > 1 ? "s" : ""} | {cabinClass}
+                </p>
+                <p className="text-sm text-on-surface-variant mt-3">
+                  {destinationMeta.description}
+                </p>
+              </div>
+              <DestinationImage
+                airportCode={toAirportCode(destination, "DEL")}
+                className="h-[190px] md:h-full rounded-none"
+                sizes="(max-width: 768px) 100vw, 280px"
+                showLabel
+              />
+            </div>
+          </div>
+
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
             <div>
-              <h1 className="font-headline-xl text-[52px] leading-tight text-on-background">
+              <h2 className="font-headline-lg text-headline-lg leading-tight text-on-background">
                 {origin} to {destination}
-              </h1>
+              </h2>
               <p className="font-body-lg text-body-lg text-on-surface-variant mt-1">
                 {date || "Upcoming"} | {passengers} Passenger{passengers > 1 ? "s" : ""} | {cabinClass}
               </p>

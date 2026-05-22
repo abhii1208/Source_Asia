@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import PopularRouteChips, { type PopularRouteChip } from "@/components/flight/PopularRouteChips";
 import { cabinClassLabels, indianAirports } from "@/lib/mock-data";
 import type { CabinClass, SearchQuery } from "@/lib/types";
 import { getTodayDateInputValue, isTodayOrFutureDate } from "@/lib/validators";
@@ -18,6 +19,13 @@ const defaults: Omit<SearchQuery, "date"> & { date?: string } = {
   passengerCount: 1,
   cabinClass: "economy"
 };
+
+const quickRoutes: PopularRouteChip[] = [
+  { origin: "BLR", destination: "DEL" },
+  { origin: "DEL", destination: "BOM" },
+  { origin: "BOM", destination: "GOI" },
+  { origin: "HYD", destination: "MAA" }
+];
 
 export default function FlightSearchForm({ initialState, recentSearches = [] }: FlightSearchFormProps) {
   const router = useRouter();
@@ -99,9 +107,18 @@ export default function FlightSearchForm({ initialState, recentSearches = [] }: 
     setForm((current) => ({ ...current, origin, destination }));
   }
 
+  function swapRoute() {
+    setForm((current) => ({
+      ...current,
+      origin: current.destination,
+      destination: current.origin
+    }));
+    setError("");
+  }
+
   return (
-    <div className="glass-panel glow-search rounded-2xl w-full shadow-glass p-card-padding">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.25fr_1fr_auto] gap-4">
+    <div className="glass-panel glow-search rounded-2xl w-full shadow-glass p-card-padding border border-white/35">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[1fr_auto_1fr_1fr_1fr_auto] gap-4">
         <div className="relative group">
           <label htmlFor="search-origin" className="absolute top-2 left-4 font-label-caps text-label-caps text-outline text-xs">
             Origin
@@ -121,6 +138,17 @@ export default function FlightSearchForm({ initialState, recentSearches = [] }: 
               ))}
             </select>
           </div>
+        </div>
+
+        <div className="hidden xl:flex items-center justify-center">
+          <button
+            type="button"
+            aria-label="Swap route"
+            onClick={swapRoute}
+            className="h-11 w-11 rounded-full border border-outline-variant bg-surface-container-lowest text-primary transition-colors hover:bg-primary-container/15 focus-ring"
+          >
+            <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
+          </button>
         </div>
 
         <div className="relative group">
@@ -149,7 +177,7 @@ export default function FlightSearchForm({ initialState, recentSearches = [] }: 
 
         <div className="relative group">
           <label htmlFor="search-depart" className="absolute top-2 left-4 font-label-caps text-label-caps text-outline text-xs">
-            Departure Date
+            Departure
           </label>
           <div className="flex items-center gap-2 bg-surface-container-lowest rounded-xl border border-outline-variant group-focus-within:border-primary group-focus-within:ring-2 group-focus-within:ring-primary/20 transition-all min-h-[72px] px-3 pt-6">
             <span className="material-symbols-outlined text-outline text-[20px]">calendar_month</span>
@@ -225,18 +253,31 @@ export default function FlightSearchForm({ initialState, recentSearches = [] }: 
           </label>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {recentSearches.map((item) => (
-            <button
-              key={`${item.origin}-${item.destination}`}
-              type="button"
-              onClick={() => setChipRoute(item.origin, item.destination)}
-              className="rounded-full px-3 py-1 text-mono-data font-mono-data border border-outline-variant bg-surface-container-lowest hover:bg-primary-container/15 transition-colors focus-ring"
-            >
-              {item.origin} to {item.destination}
-            </button>
-          ))}
-        </div>
+        <button
+          type="button"
+          onClick={swapRoute}
+          className="xl:hidden rounded-xl border border-outline-variant px-3 py-2 text-on-surface-variant hover:text-primary hover:border-primary/40 transition-colors focus-ring w-fit"
+        >
+          <span className="inline-flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+            Swap Route
+          </span>
+        </button>
+      </div>
+
+      <div className="mt-4 rounded-xl border border-outline-variant/35 bg-surface-container-lowest/70 px-4 py-3">
+        <p className="text-xs font-label-caps text-on-surface-variant">Popular Routes</p>
+        <PopularRouteChips routes={quickRoutes} onSelect={(route) => setChipRoute(route.origin, route.destination)} className="mt-2" />
+        {recentSearches.length > 0 ? (
+          <>
+            <p className="mt-3 text-xs font-label-caps text-on-surface-variant">Recent Picks</p>
+            <PopularRouteChips
+              routes={recentSearches.map((item) => ({ origin: item.origin, destination: item.destination }))}
+              onSelect={(route) => setChipRoute(route.origin, route.destination)}
+              className="mt-2"
+            />
+          </>
+        ) : null}
       </div>
 
       {error ? <p className="mt-3 text-sm text-error">{error}</p> : null}

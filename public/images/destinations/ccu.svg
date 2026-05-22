@@ -1,0 +1,38 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 720' role='img' aria-labelledby='title desc'>
+  <title id='title'>FlyAhead destination visual for Kolkata</title>
+  <desc id='desc'>Premium travel themed illustration highlighting Howrah Bridge + Culture.</desc>
+  <defs>
+    <linearGradient id='bg' x1='0' y1='0' x2='1' y2='1'>
+      <stop offset='0%' stop-color='#115e59'/>
+      <stop offset='60%' stop-color='#14b8a6'/>
+      <stop offset='100%' stop-color='#c084fc'/>
+    </linearGradient>
+    <linearGradient id='sun' x1='0' y1='0' x2='1' y2='1'>
+      <stop offset='0%' stop-color='#ffffff' stop-opacity='0.95'/>
+      <stop offset='100%' stop-color='#ffffff' stop-opacity='0.2'/>
+    </linearGradient>
+  </defs>
+  <rect width='1200' height='720' fill='url(#bg)'/>
+  <circle cx='980' cy='140' r='110' fill='url(#sun)'/>
+  <path d='M0 520 C190 465 350 575 540 545 C760 505 940 600 1200 520 L1200 720 L0 720 Z' fill='rgba(255,255,255,0.18)'/>
+  <path d='M0 575 C230 515 380 640 620 600 C860 560 995 650 1200 610 L1200 720 L0 720 Z' fill='rgba(255,255,255,0.25)'/>
+  <g fill='rgba(7,33,31,0.28)'>
+    <rect x='130' y='325' width='45' height='260' rx='6'/>
+    <rect x='196' y='278' width='52' height='307' rx='6'/>
+    <rect x='267' y='355' width='42' height='230' rx='6'/>
+    <rect x='325' y='294' width='58' height='291' rx='6'/>
+    <rect x='402' y='340' width='38' height='245' rx='6'/>
+    <rect x='455' y='310' width='54' height='275' rx='6'/>
+    <rect x='526' y='370' width='34' height='215' rx='6'/>
+  </g>
+  <g fill='rgba(255,255,255,0.87)' font-family='Inter,Arial,sans-serif'>
+    <text x='78' y='118' font-size='30' font-weight='700' letter-spacing='4'>CCU</text>
+    <text x='78' y='165' font-size='44' font-weight='700'>Kolkata</text>
+    <text x='78' y='208' font-size='20' opacity='0.93'>Howrah Bridge + Culture</text>
+    <text x='78' y='252' font-size='16' opacity='0.88'>FlyAhead premium destination preview</text>
+  </g>
+  <g transform='translate(900,330)' fill='none' stroke='rgba(255,255,255,0.75)' stroke-width='8' stroke-linecap='round'>
+    <path d='M-210 30 L-20 -10 L42 -6 L-10 10 L35 48 L18 58 L-34 19 L-120 62 Z'/>
+    <path d='M-250 84 C-170 22 -82 8 46 42'/>
+  </g>
+</svg>
