@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import PopularRouteChips, { type PopularRouteChip } from "@/components/flight/PopularRouteChips";
 import DestinationImage from "@/components/flight/DestinationImage";
+import SafeImage from "@/components/ui/SafeImage";
+import { heroTravelImage } from "@/lib/destination-images";
 import { indianAirports } from "@/lib/mock-data";
 import type { CabinClass } from "@/lib/types";
 import { getTodayDateInputValue, isTodayOrFutureDate } from "@/lib/validators";
@@ -104,12 +105,14 @@ export default function HeroSection() {
 
   return (
     <section className="relative overflow-hidden rounded-[2rem] border border-white/35 shadow-glass">
-      <Image
-        src="/images/search-mountain.svg"
-        alt="Premium travel visual with mountains and sky tones"
+      <SafeImage
+        src={heroTravelImage.src}
+        alt={heroTravelImage.alt}
         fill
         priority
-        className="object-cover"
+        sizes="100vw"
+        fallbackGradient={heroTravelImage.fallbackGradient}
+        fallbackLabel="FlyAhead"
       />
       <div className="absolute inset-0 bg-gradient-to-br from-[#0f766ecc] via-[#14b8a6ab] to-[#ecfdf5d9]" />
       <div className="absolute -top-12 -left-8 h-64 w-64 rounded-full bg-white/20 blur-3xl" />
@@ -307,4 +310,3 @@ export default function HeroSection() {
     </section>
   );
 }
-

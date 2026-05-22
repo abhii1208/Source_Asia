@@ -7,64 +7,72 @@ export type DestinationImageMeta = {
   imageAlt: string;
   highlightText: string;
   description: string;
+  fallbackGradient: string;
 };
 
-const destinationImages: Record<AirportCode, DestinationImageMeta> = {
+export const destinationImages: Record<AirportCode, DestinationImageMeta> = {
   BLR: {
     airportCode: "BLR",
     cityName: "Bengaluru",
-    imageSrc: "/images/destinations/blr.svg",
-    imageAlt: "Bengaluru destination visual with skyline and garden-city travel mood",
+    imageSrc: "/images/destinations/bengaluru.jpg",
+    imageAlt: "Bengaluru skyline and garden-city travel mood",
     highlightText: "Tech Capital Gateway",
-    description: "Modern skyline, garden-city calm, and premium business travel rhythm."
+    description: "Modern skyline, garden-city calm, and premium business travel rhythm.",
+    fallbackGradient: "from-teal-500 to-cyan-200"
   },
   DEL: {
     airportCode: "DEL",
     cityName: "Delhi",
-    imageSrc: "/images/destinations/del.svg",
-    imageAlt: "Delhi destination visual inspired by India Gate and heritage city landscape",
+    imageSrc: "/images/destinations/delhi.jpg",
+    imageAlt: "India Gate and Delhi city travel view",
     highlightText: "Heritage + Executive",
-    description: "Historic landmarks and high-frequency premium travel corridors."
+    description: "Historic landmarks and high-frequency premium travel corridors.",
+    fallbackGradient: "from-teal-500 to-emerald-200"
   },
   BOM: {
     airportCode: "BOM",
     cityName: "Mumbai",
-    imageSrc: "/images/destinations/bom.svg",
-    imageAlt: "Mumbai destination visual with coastal skyline and premium city movement",
+    imageSrc: "/images/destinations/mumbai.jpg",
+    imageAlt: "Mumbai coastal skyline and travel city vibe",
     highlightText: "Coastal Metro Energy",
-    description: "Marine Drive energy, skyline transitions, and nonstop commerce routes."
+    description: "Marine Drive energy, skyline transitions, and nonstop commerce routes.",
+    fallbackGradient: "from-cyan-600 to-sky-300"
   },
   HYD: {
     airportCode: "HYD",
     cityName: "Hyderabad",
-    imageSrc: "/images/destinations/hyd.svg",
-    imageAlt: "Hyderabad destination visual balancing Charminar heritage and modern tech district",
+    imageSrc: "/images/destinations/hyderabad.jpg",
+    imageAlt: "Hyderabad heritage and modern tech district travel view",
     highlightText: "Heritage + HITEC",
-    description: "Charminar roots with strong tech-city momentum for modern travel."
+    description: "Charminar roots with strong tech-city momentum for modern travel.",
+    fallbackGradient: "from-teal-600 to-rose-200"
   },
   MAA: {
     airportCode: "MAA",
     cityName: "Chennai",
-    imageSrc: "/images/destinations/maa.svg",
-    imageAlt: "Chennai destination visual inspired by Marina Beach and coastal sunrise travel",
+    imageSrc: "/images/destinations/chennai.jpg",
+    imageAlt: "Chennai coastal sunrise and cultural travel route",
     highlightText: "Coastal Sunrise Hub",
-    description: "Marina Beach calm and temple-lined cultural routes with steady demand."
+    description: "Marina Beach calm and temple-lined cultural routes with steady demand.",
+    fallbackGradient: "from-teal-500 to-amber-200"
   },
   CCU: {
     airportCode: "CCU",
     cityName: "Kolkata",
-    imageSrc: "/images/destinations/ccu.svg",
-    imageAlt: "Kolkata destination visual with bridge-inspired lines and cultural city atmosphere",
+    imageSrc: "/images/destinations/kolkata.jpg",
+    imageAlt: "Kolkata bridge skyline and cultural city travel mood",
     highlightText: "Cultural Corridor",
-    description: "Howrah Bridge character and classic city depth for long-route travelers."
+    description: "Howrah Bridge character and classic city depth for long-route travelers.",
+    fallbackGradient: "from-emerald-600 to-violet-200"
   },
   GOI: {
     airportCode: "GOI",
     cityName: "Goa",
-    imageSrc: "/images/destinations/goi.svg",
-    imageAlt: "Goa destination visual with beach sunset, palms, and relaxed premium travel theme",
+    imageSrc: "/images/destinations/goa.jpg",
+    imageAlt: "Goa beach and sunset travel view with palm mood",
     highlightText: "Leisure Escape",
-    description: "Palm coastlines and sunset routes for short-holiday premium breaks."
+    description: "Palm coastlines and sunset routes for short-holiday premium breaks.",
+    fallbackGradient: "from-emerald-500 to-orange-300"
   }
 };
 
@@ -75,4 +83,10 @@ export function getDestinationImage(airportCode: AirportCode): DestinationImageM
 export function getAllDestinationImages(): DestinationImageMeta[] {
   return Object.values(destinationImages);
 }
+
+export const heroTravelImage = {
+  src: "/images/destinations/hero-mountains.jpg",
+  alt: "Premium mountain travel scene for FlyAhead hero section",
+  fallbackGradient: "from-teal-700 via-teal-500 to-cyan-200"
+} as const;
 

@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { indianAirports } from "@/lib/mock-data";
+import SafeImage from "@/components/ui/SafeImage";
 import type { CabinClass } from "@/lib/types";
+import { heroTravelImage } from "@/lib/destination-images";
 import { getTodayDateInputValue, isTodayOrFutureDate } from "@/lib/validators";
 
 type SearchErrors = {
@@ -94,12 +95,14 @@ export default function HeroSearch() {
 
   return (
     <section className="relative w-full pt-10 pb-20 md:pt-14 md:pb-24 overflow-hidden rounded-[2rem]">
-      <Image
-        src="/images/search-mountain.svg"
-        alt="Scenic mountain and sky travel visual"
+      <SafeImage
+        src={heroTravelImage.src}
+        alt={heroTravelImage.alt}
         fill
         priority
-        className="object-cover"
+        sizes="100vw"
+        fallbackGradient={heroTravelImage.fallbackGradient}
+        fallbackLabel="FlyAhead"
       />
       <div className="absolute inset-0 bg-gradient-to-br from-[#0f766eb3] via-[#14b8a670] to-[#ecfdf5c9]" />
       <div className="absolute -top-10 -left-10 w-72 h-72 bg-white/20 rounded-full blur-3xl" />

@@ -254,24 +254,21 @@ export const trendingDestinations: DestinationCard[] = [
     country: "France",
     fromPrice: 450,
     airport: "DEL",
-    imageUrl:
-      "https://images.unsplash.com/photo-1431274172761-fca41d930114?auto=format&fit=crop&w=1400&q=80"
+    imageUrl: "/images/destinations/delhi.jpg"
   },
   {
     city: "Tokyo",
     country: "Japan",
     fromPrice: 899,
     airport: "BLR",
-    imageUrl:
-      "https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?auto=format&fit=crop&w=1400&q=80"
+    imageUrl: "/images/destinations/bengaluru.jpg"
   },
   {
     city: "Dubai",
     country: "UAE",
     fromPrice: 520,
     airport: "BOM",
-    imageUrl:
-      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1400&q=80"
+    imageUrl: "/images/destinations/mumbai.jpg"
   }
 ];
 

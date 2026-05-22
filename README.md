@@ -227,6 +227,31 @@ If direct DB connection fails in restricted IPv4 networks, use Supabase **Sessio
 
 Production URL placeholder: `<add-vercel-url-here>`
 
+## Deployment (Render)
+1. Push repository to GitHub.
+2. Create a new Render Web Service from the GitHub repo.
+3. Configure environment variables in Render:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (or `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (optional if publishable key already set)
+   - `SUPABASE_SERVICE_ROLE_KEY` (server-only)
+   - `DATABASE_URL` (optional if used)
+   - `RESEND_API_KEY` (server-only for ticket emails)
+   - `EMAIL_FROM` (server-only sender address)
+   - `NEXT_PUBLIC_APP_URL` (optional; used in ticket email links)
+4. Render build command: `npm install && npm run build`
+5. Render start command: `npm run start`
+6. Redeploy and verify destination images load from:
+   - `/images/destinations/bengaluru.jpg`
+   - `/images/destinations/delhi.jpg`
+   - `/images/destinations/mumbai.jpg`
+   - `/images/destinations/hyderabad.jpg`
+   - `/images/destinations/chennai.jpg`
+   - `/images/destinations/kolkata.jpg`
+   - `/images/destinations/goa.jpg`
+   - `/images/destinations/hero-mountains.jpg`
+7. Linux hosts are case-sensitive, so image filenames must exactly match lowercase kebab-case paths.
+
 ## Final Verification Commands
 ```bash
 npm run lint
